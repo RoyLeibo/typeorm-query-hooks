@@ -156,16 +156,16 @@ export class PostgresqlQueryLogger extends BaseQueryLogger {
   }
 
   logQuery(query: string, parameters?: any[]): void {
-    // ✅ Use inherited methods to get table metadata
-    const tables = this.getTablesFromQuery(query);
-    const primaryTable = this.getPrimaryTable(query);
-    const hasMetadata = this.hasMetadata(query);
+    // ✅ These methods extract table names from the SQL string
+    const tables = this.getTablesFromQuery(query);        // e.g., ['users', 'posts']
+    const primaryTable = this.getPrimaryTable(query);     // e.g., 'users' (first table)
+    const hasMetadata = this.hasMetadata(query);          // true if came from QueryBuilder
 
     this.logger.debug('Query executed', {
-      tables,
+      tables,              // Array of all involved tables
       tableCount: tables.length,
-      primaryTable,
-      hasMetadata, // true if came from QueryBuilder
+      primaryTable,        // The main table
+      hasMetadata,         // Whether we have metadata from QueryBuilder
       sql: query.substring(0, 200),
     });
   }
