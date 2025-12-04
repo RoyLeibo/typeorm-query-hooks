@@ -5,11 +5,12 @@ A plugin-based extension system for TypeORM QueryBuilder that adds hooks and uti
 ## Features
 
 - 🔌 **Plugin Architecture**: Extensible system for adding custom functionality
-- 📊 **Table Extraction**: Automatically extract involved tables from any query
+- 📊 **Table Extraction**: Automatically extract involved tables from any query (100% accurate, no regex)
 - 🎯 **Zero Import Changes**: Works with standard `typeorm` imports
 - 🔍 **Type-Safe**: Full TypeScript support with IntelliSense
 - 🪝 **Query Hooks**: Intercept and observe query building
 - 🚀 **Easy Setup**: One-time initialization at app startup
+- 🪺 **NestJS Ready**: Built-in integration with dependency injection
 
 ## Installation
 
