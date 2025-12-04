@@ -46,10 +46,12 @@ describe('QueryLoggerPlugin', () => {
     qb.getQuery();
 
     expect(consoleLogSpy).toHaveBeenCalled();
-    expect(consoleLogSpy.mock.calls[0][0]).toContain('[QueryLogger]');
-    expect(consoleLogSpy.mock.calls[0][0]).toContain('SELECT');
+    const logMessage = consoleLogSpy.mock.calls[consoleLogSpy.mock.calls.length - 1][0];
+    expect(logMessage).toContain('[QueryLogger]');
+    expect(logMessage).toContain('SELECT');
 
     consoleLogSpy.mockRestore();
+    unregisterPlugin('QueryLogger');
   });
 
   it('should log with custom logger', () => {
