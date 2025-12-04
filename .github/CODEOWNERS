@@ -1,0 +1,19 @@
+# Code Owners
+# These owners will be automatically requested for review when someone opens a PR
+
+# Default owner for everything
+* @RoyLeibo
+
+# Core library files
+/src/ @RoyLeibo
+/test/ @RoyLeibo
+
+# Documentation
+*.md @RoyLeibo
+/examples/ @RoyLeibo
+
+# Build and CI/CD
+package.json @RoyLeibo
+tsconfig.json @RoyLeibo
+.github/ @RoyLeibo
+
