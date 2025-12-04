@@ -70,8 +70,13 @@ export function extractTablesFromBuilder(builder: QueryBuilder<any>): string[] {
   }
 
   // 4. Relation metadata (specific relation query cases)
-  if (expressionMap.relationMetadata?.entityMetadata?.tableName) {
-    tables.add(expressionMap.relationMetadata.entityMetadata.tableName);
+  // Note: relationMetadata is only available on SELECT queries
+  try {
+    if (expressionMap.relationMetadata?.entityMetadata?.tableName) {
+      tables.add(expressionMap.relationMetadata.entityMetadata.tableName);
+    }
+  } catch (error) {
+    // Ignore errors accessing relationMetadata on non-SELECT queries
   }
 
   // 5. Common Table Expressions (CTEs) - WITH clauses
