@@ -2,10 +2,6 @@ import { DataSource, Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 import {
   enableQueryHooks,
   registerPlugin,
-  unregisterPlugin,
-  TableExtractorPlugin,
-  QueryMetadataRegistryPlugin,
-  QueryLoggerPlugin,
   createQueryLoggerPlugin
 } from '../src';
 
