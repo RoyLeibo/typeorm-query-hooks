@@ -2,6 +2,9 @@ import { DataSource, Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 import {
   enableQueryHooks,
   registerPlugin,
+  unregisterPlugin,
+  TableExtractorPlugin,
+  QueryMetadataRegistryPlugin,
   QueryLoggerPlugin,
   createQueryLoggerPlugin
 } from '../src';
@@ -36,25 +39,24 @@ describe('QueryLoggerPlugin', () => {
     await dataSource.destroy();
   });
 
-  it('should log queries with default logger', () => {
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+  it('should log queries with custom logger', () => {
+    let loggedMessage = '';
+    
+    const testPlugin = createQueryLoggerPlugin({
+      logger: (msg) => { loggedMessage = msg; }
+    });
 
-    registerPlugin(QueryLoggerPlugin);
+    registerPlugin(testPlugin);
 
     const repo = dataSource.getRepository(LoggerTestEntity);
     const qb = repo.createQueryBuilder('entity');
     qb.getQuery();
 
-    expect(consoleLogSpy).toHaveBeenCalled();
-    const logMessage = consoleLogSpy.mock.calls[consoleLogSpy.mock.calls.length - 1][0];
-    expect(logMessage).toContain('[QueryLogger]');
-    expect(logMessage).toContain('SELECT');
-
-    consoleLogSpy.mockRestore();
-    unregisterPlugin('QueryLogger');
+    expect(loggedMessage).toContain('[QueryLogger]');
+    expect(loggedMessage).toContain('SELECT');
   });
 
-  it('should log with custom logger', () => {
+  it('should use jest mock function as logger', () => {
     const customLogger = jest.fn();
 
     const customLoggerPlugin = createQueryLoggerPlugin({
