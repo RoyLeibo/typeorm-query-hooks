@@ -33,20 +33,4 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
           verbose: true
-      
-      - name: Generate coverage badge
-        uses: cicirello/jacoco-badge-generator@v2
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          badges-directory: badges
-          generate-branches-badge: false
-          generate-summary: true
-      
-      - name: Comment coverage on PR
-        if: github.event_name == 'pull_request'
-        uses: romeovs/lcov-reporter-action@v0.3.1
-        with:
-          lcov-file: ./coverage/lcov.info
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          delete-old-comments: true
 
