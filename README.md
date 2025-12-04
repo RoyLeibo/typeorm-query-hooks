@@ -98,9 +98,20 @@ unregisterPlugin('TableExtractor');
 
 ## NestJS Integration
 
-The library provides seamless integration with NestJS and dependency injection, making it easy to access table metadata in your TypeORM Logger implementations.
+The library provides seamless integration with NestJS, allowing you to **automatically extract table names from SQL queries** in your TypeORM Logger.
 
-### Setup
+### 🎯 What You Get
+
+When queries are executed through QueryBuilder, you can access table metadata in your logger:
+
+```typescript
+logQuery(query: string) {
+  const tables = this.getTablesFromQuery(query);
+  console.log(tables);  // ['users', 'posts', 'comments']
+}
+```
+
+### ⚙️ Setup (3 Steps)
 
 ```typescript
 // query-hooks.module.ts
@@ -137,7 +148,7 @@ export class QueryHooksInitializer implements OnModuleInit {
 export class QueryHooksModule {}
 ```
 
-### Using in TypeORM Logger (Approach 1: Extend BaseQueryLogger)
+### Step 2: Create Your Custom Logger (Option A: BaseQueryLogger)
 
 ```typescript
 // postgresql-query.logger.ts
@@ -203,7 +214,7 @@ export class PostgresqlQueryLogger extends BaseQueryLogger {
 }
 ```
 
-### Using in TypeORM Logger (Approach 2: Dependency Injection)
+### Step 2: Create Your Custom Logger (Option B: Dependency Injection)
 
 ```typescript
 import { Injectable, Logger } from '@nestjs/common';
@@ -238,7 +249,7 @@ export class PostgresqlQueryLogger implements TypeOrmLogger {
 }
 ```
 
-### Configure TypeORM to Use Your Logger
+### Step 3: Configure TypeORM to Use Your Logger
 
 ```typescript
 // app.module.ts
