@@ -249,6 +249,7 @@ describe('QueryMetadataService', () => {
   });
 
   it('should provide getTablesFromQuery method', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { QueryMetadataService } = require('../src/nestjs');
     const service = new QueryMetadataService();
 
@@ -261,6 +262,7 @@ describe('QueryMetadataService', () => {
   });
 
   it('should provide getPrimaryTable method', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { QueryMetadataService } = require('../src/nestjs');
     const service = new QueryMetadataService();
 
@@ -272,17 +274,19 @@ describe('QueryMetadataService', () => {
     expect(primaryTable).toBe('registry_test_users');
   });
 
-  it('should return "unknown" for getPrimaryTable when no metadata', () => {
-    const { QueryMetadataService } = require('../src/nestjs');
-    const service = new QueryMetadataService();
+    it('should return "unknown" for getPrimaryTable when no metadata', () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { QueryMetadataService } = require('../src/nestjs');
+      const service = new QueryMetadataService();
 
     const primaryTable = service.getPrimaryTable('SELECT * FROM nowhere');
     expect(primaryTable).toBe('unknown');
   });
 
-  it('should provide getTableInfo method', () => {
-    const { QueryMetadataService } = require('../src/nestjs');
-    const service = new QueryMetadataService();
+    it('should provide getTableInfo method', () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { QueryMetadataService } = require('../src/nestjs');
+      const service = new QueryMetadataService();
 
     const repo = dataSource.getRepository(RegistryTestUser);
     const qb = repo

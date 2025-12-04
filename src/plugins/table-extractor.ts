@@ -129,6 +129,7 @@ export function extractTablesFromBuilder(builder: QueryBuilder<any>): string[] {
  * Type augmentation to add getInvolvedTables() method to all QueryBuilder types
  */
 declare module 'typeorm' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface SelectQueryBuilder<Entity> {
     /**
      * Get list of table names involved in this query
@@ -137,6 +138,7 @@ declare module 'typeorm' {
     getInvolvedTables(): string[];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface InsertQueryBuilder<Entity> {
     /**
      * Get list of table names involved in this query
@@ -145,6 +147,7 @@ declare module 'typeorm' {
     getInvolvedTables(): string[];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface UpdateQueryBuilder<Entity> {
     /**
      * Get list of table names involved in this query
@@ -153,6 +156,7 @@ declare module 'typeorm' {
     getInvolvedTables(): string[];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface DeleteQueryBuilder<Entity> {
     /**
      * Get list of table names involved in this query

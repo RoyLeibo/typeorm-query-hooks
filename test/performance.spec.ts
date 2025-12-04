@@ -153,6 +153,7 @@ describe('Performance and Memory Management', () => {
       const sql2 = qb2.getQuery();
 
       // Both should be found in registry (normalization working)
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { getTablesFromSQL } = require('../src/plugins/query-metadata-registry');
       
       const tables1 = getTablesFromSQL(sql1);
@@ -166,6 +167,7 @@ describe('Performance and Memory Management', () => {
       const qb = repo.createQueryBuilder('entity');
       const sql = qb.getQuery();
 
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { getTablesFromSQL } = require('../src/plugins/query-metadata-registry');
       
       const tables1 = getTablesFromSQL(sql);
