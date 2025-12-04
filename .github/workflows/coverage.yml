@@ -25,11 +25,6 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:cov
       
-      - name: Check coverage thresholds
-        run: |
-          echo "Checking if coverage meets minimum thresholds..."
-          npm run test:cov -- --coverageReporters=text
-      
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
