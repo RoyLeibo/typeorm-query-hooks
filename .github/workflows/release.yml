@@ -27,7 +27,7 @@ jobs:
         run: npm ci
       
       - name: Run tests
-        run: npm run test:cov
+        run: npm test -- --verbose --no-cache
       
       - name: Build
         run: npm run build
