@@ -140,8 +140,15 @@ export function enableQueryHooks(): void {
       return sql;
     };
 
-    // Also patch execution methods to trigger getQuery() before execution
-    const executionMethods = ['getOne', 'getMany', 'getRawOne', 'getRawMany', 'execute', 'getExists', 'getCount'];
+    // Also patch ALL execution methods to trigger getQuery() before execution
+    const executionMethods = [
+      // Read operations
+      'getOne', 'getMany', 'getRawOne', 'getRawMany', 'getExists', 'getCount', 'getManyAndCount', 'getRawAndEntities',
+      // Write operations
+      'execute', 'insert', 'update', 'delete', 'softDelete', 'restore',
+      // Stream operations
+      'stream'
+    ];
     
     executionMethods.forEach(methodName => {
       const original = (BuilderClass.prototype as any)[methodName];
