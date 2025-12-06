@@ -156,9 +156,10 @@ export function enableQueryHooks(): void {
         (BuilderClass.prototype as any)[methodName] = function (...args: any[]) {
           // Trigger getQuery() to capture metadata before execution
           try {
-            this.getQuery();
+            const sql = this.getQuery();
+            console.log(`[typeorm-query-hooks] ${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
           } catch (err) {
-            // Ignore errors from getQuery() - still execute original
+            console.warn(`[typeorm-query-hooks] ${methodName}() - getQuery() failed:`, err);
           }
           return original.apply(this, args);
         };
