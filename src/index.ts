@@ -139,6 +139,24 @@ export function enableQueryHooks(): void {
 
       return sql;
     };
+
+    // Also patch execution methods to trigger getQuery() before execution
+    const executionMethods = ['getOne', 'getMany', 'getRawOne', 'getRawMany', 'execute', 'getExists', 'getCount'];
+    
+    executionMethods.forEach(methodName => {
+      const original = (BuilderClass.prototype as any)[methodName];
+      if (original) {
+        (BuilderClass.prototype as any)[methodName] = function (...args: any[]) {
+          // Trigger getQuery() to capture metadata before execution
+          try {
+            this.getQuery();
+          } catch (err) {
+            // Ignore errors from getQuery() - still execute original
+          }
+          return original.apply(this, args);
+        };
+      }
+    });
   });
 
   isPatched = true;
