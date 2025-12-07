@@ -155,7 +155,7 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
     const tables = extractTablesFromBuilder(context.builder);
     const queryType = getQueryType(context.builder);
 
-    console.log('[QueryMetadataRegistryPlugin] Storing SQL (first 200 chars):', context.sql.substring(0, 200));
+    console.log('[QueryMetadataRegistryPlugin] Storing SQL - Length:', context.sql.length, 'First 200 chars:', context.sql.substring(0, 200));
     console.log('[QueryMetadataRegistryPlugin] Extracted:', { tables, queryType });
 
     const metadata: QueryMetadata = {
@@ -175,12 +175,17 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
  * Falls back to empty array if not found in registry
  */
 export function getTablesFromSQL(sql: string): string[] {
-  console.log('[getTablesFromSQL] Called with SQL (first 200 chars):', sql.substring(0, 200));
+  console.log('[getTablesFromSQL] Looking up SQL - Length:', sql.length, 'First 200 chars:', sql.substring(0, 200));
   console.log('[getTablesFromSQL] Registry size:', queryMetadataRegistry.size());
   
   const tables = queryMetadataRegistry.getTables(sql);
   
   console.log('[getTablesFromSQL] Found tables:', tables);
+  
+  // If not found, let's see what keys ARE in the registry
+  if (tables.length === 0 && queryMetadataRegistry.size() > 0) {
+    console.log('[getTablesFromSQL] Registry has entries but SQL not found. Checking what is in registry...');
+  }
   
   return tables;
 }
