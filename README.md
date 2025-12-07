@@ -83,15 +83,12 @@ import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performanc
 
 // Enable hooks at application startup
 enableQueryHooks({
-  verbose: false,              // Enable debug logging
-  slowQueryThreshold: 1000,    // Slow query threshold in ms (default: 1000)
-  largeResultThreshold: 5000,  // Large result set threshold in rows (default: 1000)
-  warnOnEmptyTables: true      // Warn when no tables are extracted (default: true)
+  verbose: false  // Enable debug logging (default: false)
 });
 
-// Register performance monitoring plugin
+// Register performance monitoring plugin with its own configuration
 registerPlugin(PerformanceMonitorPlugin({
-  slowQueryThreshold: 500,
+  slowQueryThreshold: 500,  // Plugin-specific threshold
   enableLogging: true,
   onSlowQuery: (context) => {
     console.warn(`🐌 Slow query: ${context.executionTime}ms`, {
@@ -113,15 +110,18 @@ registerPlugin(PerformanceMonitorPlugin({
 ```typescript
 // app.module.ts or main.ts
 import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { TableExtractorPlugin } from 'typeorm-query-hooks/plugins/table-extractor';
+import { createTableExtractorPlugin } from 'typeorm-query-hooks/plugins/table-extractor';
 import { QueryMetadataRegistryPlugin } from 'typeorm-query-hooks/plugins/query-metadata-registry';
 import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
 
 // Initialize hooks before TypeORM connection
-enableQueryHooks({ verbose: true, slowQueryThreshold: 500 });
+enableQueryHooks({ verbose: true });
 
-// Register essential plugins
-registerPlugin(TableExtractorPlugin);
+// Register plugins with their own configurations
+registerPlugin(createTableExtractorPlugin({
+  warnOnEmptyTables: true,
+  enableLogging: false
+}));
 registerPlugin(QueryMetadataRegistryPlugin);
 registerPlugin(PerformanceMonitorPlugin({
   slowQueryThreshold: 500,
@@ -192,10 +192,10 @@ Detect slow queries and send alerts to your monitoring service.
 import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
 import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
 
-enableQueryHooks({ slowQueryThreshold: 500 });
+enableQueryHooks();
 
 registerPlugin(PerformanceMonitorPlugin({
-  slowQueryThreshold: 500,
+  slowQueryThreshold: 500,  // Plugin-specific threshold
   enableLogging: true,
   onSlowQuery: (context) => {
     // Send to DataDog
@@ -227,10 +227,10 @@ Alert when critical queries return empty results or large datasets.
 import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
 import { ResultValidatorPlugin } from 'typeorm-query-hooks/plugins/result-validator';
 
-enableQueryHooks({ largeResultThreshold: 1000 });
+enableQueryHooks();
 
 registerPlugin(ResultValidatorPlugin({
-  largeResultThreshold: 1000,
+  largeResultThreshold: 1000,  // Plugin-specific threshold
   monitorTables: ['users', 'orders', 'products'], // Only monitor these tables
   enableLogging: true,
   onEmptyResult: (context) => {
@@ -456,6 +456,113 @@ const TracingPlugin: QueryHookPlugin = {
 registerPlugin(TracingPlugin);
 ```
 
+### 8. **Transaction Monitoring**
+
+Track transaction lifecycle for debugging and monitoring.
+
+```typescript
+import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
+
+enableQueryHooks();
+
+const TransactionMonitorPlugin: QueryHookPlugin = {
+  name: 'TransactionMonitor',
+  
+  onTransactionStart: (context) => {
+    console.log('🔄 Transaction started', {
+      timestamp: context.timestamp,
+      queryRunner: context.queryRunner
+    });
+  },
+  
+  onTransactionCommit: (context) => {
+    console.log('✅ Transaction committed', {
+      executionTime: context.executionTime,
+      queriesExecuted: context.queriesExecuted?.length || 0
+    });
+    
+    // Clear cache after successful transaction
+    redis.del('cache:*');
+  },
+  
+  onTransactionRollback: (context) => {
+    console.error('❌ Transaction rolled back', {
+      error: context.error.message,
+      executionTime: context.executionTime
+    });
+    
+    // Send alert to error tracking service
+    Sentry.captureException(context.error, {
+      extra: {
+        queriesExecuted: context.queriesExecuted
+      }
+    });
+  },
+  
+  onTransactionEnd: (context) => {
+    console.log('🏁 Transaction ended', {
+      duration: context.executionTime
+    });
+  }
+};
+
+registerPlugin(TransactionMonitorPlugin);
+```
+
+### 9. **Connection Pool Monitoring**
+
+Monitor database connection pool health.
+
+```typescript
+import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
+
+enableQueryHooks();
+
+const ConnectionPoolPlugin: QueryHookPlugin = {
+  name: 'ConnectionPoolMonitor',
+  
+  onConnectionAcquired: (context) => {
+    console.log('🔗 Connection acquired', {
+      activeConnections: context.activeConnections,
+      idleConnections: context.idleConnections
+    });
+    
+    // Track connection pool metrics
+    prometheus.gauge('db_connections_active', context.activeConnections || 0);
+    prometheus.gauge('db_connections_idle', context.idleConnections || 0);
+  },
+  
+  onConnectionReleased: (context) => {
+    console.log('🔓 Connection released');
+  },
+  
+  onConnectionPoolFull: (context) => {
+    console.error('🚨 Connection pool exhausted!', {
+      maxConnections: context.maxConnections,
+      waitingCount: context.waitingCount
+    });
+    
+    // Send critical alert
+    pagerduty.trigger({
+      severity: 'critical',
+      summary: 'Database connection pool exhausted',
+      details: context
+    });
+  },
+  
+  onConnectionError: (context) => {
+    console.error('❌ Connection error', {
+      error: context.error.message
+    });
+    
+    // Track connection errors
+    datadog.increment('db_connection_errors');
+  }
+};
+
+registerPlugin(ConnectionPoolPlugin);
+```
+
 ---
 
 ## 🎨 Creating Custom Plugins
@@ -520,12 +627,11 @@ Enable the hook system. Call once at application startup.
 
 ```typescript
 enableQueryHooks({
-  verbose: boolean,              // Enable debug logging (default: false)
-  slowQueryThreshold: number,    // Slow query threshold in ms (default: 1000)
-  largeResultThreshold: number,  // Large result threshold in rows (default: 1000)
-  warnOnEmptyTables: boolean     // Warn when no tables are extracted (default: true)
+  verbose: boolean  // Enable debug logging (default: false)
 });
 ```
+
+**Note:** Configuration like thresholds and warnings are now plugin-specific. Each plugin has its own options.
 
 #### `registerPlugin(plugin)`
 
@@ -602,21 +708,43 @@ This will log:
 - Tables extracted from queries
 - Execution timing
 
-### Empty Tables Warning
+### Plugin-Specific Configuration
 
-By default, the library warns when no tables are extracted from a query:
+Each plugin has its own configuration options:
 
-```
-[typeorm-query-hooks] ⚠️  No tables extracted from SELECT query.
-This might indicate an issue with table extraction or a raw query without table metadata.
-```
-
-This helps identify potential issues with table extraction or raw queries. To disable this warning:
-
+**PerformanceMonitorPlugin:**
 ```typescript
-enableQueryHooks({ 
-  warnOnEmptyTables: false  // Disable empty tables warning
-});
+registerPlugin(PerformanceMonitorPlugin({
+  slowQueryThreshold: 500,  // ms (default: 1000)
+  enableLogging: true,      // (default: false)
+  onSlowQuery: (context) => { /* custom handler */ },
+  onMetric: (context) => { /* custom handler */ }
+}));
+```
+
+**ResultValidatorPlugin:**
+```typescript
+registerPlugin(ResultValidatorPlugin({
+  largeResultThreshold: 5000,  // rows (default: 1000)
+  monitorTables: ['users', 'orders'],  // specific tables to monitor
+  enableLogging: true,  // (default: false)
+  onEmptyResult: (context) => { /* custom handler */ },
+  onLargeResult: (context) => { /* custom handler */ }
+}));
+```
+
+**TableExtractorPlugin:**
+```typescript
+registerPlugin(createTableExtractorPlugin({
+  warnOnEmptyTables: true,  // (default: true)
+  enableLogging: false      // (default: false)
+}));
+```
+
+Empty tables warning example:
+```
+[TableExtractor] ⚠️  No tables extracted from SELECT query.
+This might indicate an issue with table extraction or a raw query without table metadata.
 ```
 
 ---

@@ -72,6 +72,11 @@ export function ResultValidatorPlugin(options: ResultValidatorOptions = {}): Que
     name: 'ResultValidator',
 
     onEmptyResult: (context: QueryResultContext) => {
+      // Only trigger if result is actually empty
+      if (!context.isEmpty) {
+        return;
+      }
+
       // Check if this query involves monitored tables
       const { extractTablesFromBuilder } = require('./table-extractor');
       const tables = extractTablesFromBuilder(context.builder);
@@ -91,18 +96,21 @@ export function ResultValidatorPlugin(options: ResultValidatorOptions = {}): Que
     },
 
     onLargeResult: (context: QueryResultContext) => {
-      if (enableLogging) {
-        console.warn(`[ResultValidator] 📊 Large result set detected:`, {
-          rowCount: context.rowCount,
-          threshold: largeResultThreshold,
-          method: context.methodName,
-          sql: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : ''),
-          suggestion: 'Consider adding pagination (take/skip)'
-        });
-      }
+      // Check if result exceeds threshold
+      if (context.rowCount !== undefined && context.rowCount > largeResultThreshold) {
+        if (enableLogging) {
+          console.warn(`[ResultValidator] 📊 Large result set detected:`, {
+            rowCount: context.rowCount,
+            threshold: largeResultThreshold,
+            method: context.methodName,
+            sql: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : ''),
+            suggestion: 'Consider adding pagination (take/skip)'
+          });
+        }
 
-      if (onLargeResult) {
-        onLargeResult(context);
+        if (onLargeResult) {
+          onLargeResult(context);
+        }
       }
     },
 

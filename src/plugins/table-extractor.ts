@@ -203,42 +203,98 @@ export function offTablesExtracted(callback: TableExtractorCallback): boolean {
 }
 
 /**
+ * Options for TableExtractorPlugin
+ */
+export interface TableExtractorOptions {
+  /**
+   * Show warning when no tables are extracted from a query (default: true)
+   */
+  warnOnEmptyTables?: boolean;
+  
+  /**
+   * Enable console logging (default: false)
+   */
+  enableLogging?: boolean;
+}
+
+/**
  * Table Extractor Plugin
  * Adds the ability to extract table names from QueryBuilder instances
+ * 
+ * @example
+ * ```typescript
+ * import { registerPlugin } from 'typeorm-query-hooks';
+ * import { createTableExtractorPlugin } from 'typeorm-query-hooks/plugins/table-extractor';
+ * 
+ * registerPlugin(createTableExtractorPlugin({
+ *   warnOnEmptyTables: true,
+ *   enableLogging: false
+ * }));
+ * ```
  */
-export const TableExtractorPlugin: QueryHookPlugin = {
-  name: 'TableExtractor',
+export function createTableExtractorPlugin(options: TableExtractorOptions = {}): QueryHookPlugin {
+  const {
+    warnOnEmptyTables = true,
+    enableLogging = false
+  } = options;
 
-  onEnable: () => {
-    // Add getInvolvedTables method to all QueryBuilder prototypes
-    const builders = [
-      SelectQueryBuilder,
-      InsertQueryBuilder,
-      UpdateQueryBuilder,
-      DeleteQueryBuilder
-    ];
+  return {
+    name: 'TableExtractor',
 
-    builders.forEach((BuilderClass) => {
-      // Only add if not already present (avoid double-patching)
-      if (!(BuilderClass.prototype as any).getInvolvedTables) {
-        (BuilderClass.prototype as any).getInvolvedTables = function () {
-          return extractTablesFromBuilder(this);
-        };
+    onEnable: () => {
+      // Add getInvolvedTables method to all QueryBuilder prototypes
+      const builders = [
+        SelectQueryBuilder,
+        InsertQueryBuilder,
+        UpdateQueryBuilder,
+        DeleteQueryBuilder
+      ];
+
+      builders.forEach((BuilderClass) => {
+        // Only add if not already present (avoid double-patching)
+        if (!(BuilderClass.prototype as any).getInvolvedTables) {
+          (BuilderClass.prototype as any).getInvolvedTables = function () {
+            return extractTablesFromBuilder(this);
+          };
+        }
+      });
+    },
+
+    onQueryBuild: (context) => {
+      // Extract tables and notify listeners
+      const tables = extractTablesFromBuilder(context.builder);
+      
+      // Warn if no tables were extracted (if warnings are enabled)
+      if (warnOnEmptyTables && tables.length === 0) {
+        const operationType = context.queryType ? String(context.queryType).toUpperCase() : 'UNKNOWN';
+        console.warn(
+          `[TableExtractor] ⚠️  No tables extracted from ${operationType} query. ` +
+          `This might indicate an issue with table extraction or a raw query without table metadata.`,
+          {
+            queryType: operationType,
+            sqlPreview: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : '')
+          }
+        );
       }
-    });
-  },
 
-  onQueryBuild: (context) => {
-    // Extract tables and notify listeners
-    const tables = extractTablesFromBuilder(context.builder);
-    
-    tableExtractorListeners.forEach(listener => {
-      try {
-        listener(tables, context.builder, context.sql);
-      } catch (err) {
-        console.warn('[TableExtractorPlugin] Listener failed:', err);
+      if (enableLogging && tables.length > 0) {
+        console.log(`[TableExtractor] Extracted ${tables.length} table(s):`, tables);
       }
-    });
-  }
-};
+      
+      tableExtractorListeners.forEach(listener => {
+        try {
+          listener(tables, context.builder, context.sql);
+        } catch (err) {
+          console.warn('[TableExtractorPlugin] Listener failed:', err);
+        }
+      });
+    }
+  };
+}
+
+/**
+ * Default Table Extractor Plugin (for backward compatibility)
+ * Uses default options: warnOnEmptyTables = true, enableLogging = false
+ */
+export const TableExtractorPlugin: QueryHookPlugin = createTableExtractorPlugin();
 

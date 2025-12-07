@@ -285,26 +285,7 @@ export interface QueryHooksOptions {
    * Enable detailed logging for debugging (default: false)
    */
   verbose?: boolean;
-  
-  /**
-   * Threshold in milliseconds for slow query detection (default: 1000)
-   */
-  slowQueryThreshold?: number;
-  
-  /**
-   * Threshold for large result set detection (default: 1000 rows)
-   */
-  largeResultThreshold?: number;
-  
-  /**
-   * Show warning when no tables are extracted from a query (default: true)
-   */
-  warnOnEmptyTables?: boolean;
 }
-
-let slowQueryThreshold = 1000; // default 1 second
-let largeResultThreshold = 1000; // default 1000 rows
-let warnOnEmptyTables = true; // default true
 
 /**
  * Enable TypeORM query hooks by patching QueryBuilder classes
@@ -316,18 +297,6 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
   if (options?.verbose) {
     verboseMode = true;
     console.log('[typeorm-query-hooks] Verbose mode enabled');
-  }
-  
-  if (options?.slowQueryThreshold !== undefined) {
-    slowQueryThreshold = options.slowQueryThreshold;
-  }
-  
-  if (options?.largeResultThreshold !== undefined) {
-    largeResultThreshold = options.largeResultThreshold;
-  }
-  
-  if (options?.warnOnEmptyTables !== undefined) {
-    warnOnEmptyTables = options.warnOnEmptyTables;
   }
   
   if (isPatched) {
@@ -448,21 +417,6 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           
           const tables = extractTablesFromBuilder(this);
           const queryType = (this as any).expressionMap?.queryType;
-          
-          // Warn if no tables were extracted (if warnings are enabled)
-          if (warnOnEmptyTables && tables.length === 0) {
-            const operationType = queryType ? queryType.toUpperCase() : 'UNKNOWN';
-            console.warn(
-              `[typeorm-query-hooks] ⚠️  No tables extracted from ${operationType} query. ` +
-              `This might indicate an issue with table extraction or a raw query without table metadata.`,
-              {
-                method: methodName,
-                queryType: operationType,
-                sqlPreview: sql.substring(0, 150) + (sql.length > 150 ? '...' : '')
-              }
-            );
-          }
-          
           const context = {
             builder: this,
             sql,
@@ -533,19 +487,6 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
             });
           }
 
-          // Fire onSlowQuery if threshold exceeded
-          if (executionTime > slowQueryThreshold) {
-            plugins.forEach(plugin => {
-              if (plugin.onSlowQuery) {
-                try {
-                  plugin.onSlowQuery(executionContext);
-                } catch (err) {
-                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onSlowQuery failed:`, err);
-                }
-              }
-            });
-          }
-
           // Analyze result and fire result hooks
           const isEmpty = result === null || result === undefined || 
                          (Array.isArray(result) && result.length === 0) ||
@@ -567,7 +508,7 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
             isEmpty
           };
 
-          // Fire onQueryResult
+          // Fire onQueryResult (plugins decide what to do with the result)
           plugins.forEach(plugin => {
             if (plugin.onQueryResult) {
               try {
@@ -578,31 +519,38 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
             }
           });
 
-          // Fire onEmptyResult
-          if (isEmpty) {
-            plugins.forEach(plugin => {
-              if (plugin.onEmptyResult) {
-                try {
-                  plugin.onEmptyResult(resultContext);
-                } catch (err) {
-                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onEmptyResult failed:`, err);
-                }
+          // Fire onEmptyResult (plugins decide if they care about empty results)
+          plugins.forEach(plugin => {
+            if (plugin.onEmptyResult) {
+              try {
+                plugin.onEmptyResult(resultContext);
+              } catch (err) {
+                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onEmptyResult failed:`, err);
               }
-            });
-          }
+            }
+          });
 
-          // Fire onLargeResult
-          if (rowCount !== undefined && rowCount > largeResultThreshold) {
-            plugins.forEach(plugin => {
-              if (plugin.onLargeResult) {
-                try {
-                  plugin.onLargeResult(resultContext);
-                } catch (err) {
-                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onLargeResult failed:`, err);
-                }
+          // Fire onLargeResult (plugins decide what is "large")
+          plugins.forEach(plugin => {
+            if (plugin.onLargeResult) {
+              try {
+                plugin.onLargeResult(resultContext);
+              } catch (err) {
+                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onLargeResult failed:`, err);
               }
-            });
-          }
+            }
+          });
+
+          // Fire onSlowQuery (plugins decide what is "slow")
+          plugins.forEach(plugin => {
+            if (plugin.onSlowQuery) {
+              try {
+                plugin.onSlowQuery(executionContext);
+              } catch (err) {
+                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onSlowQuery failed:`, err);
+              }
+            }
+          });
 
           return result;
         };

@@ -68,20 +68,21 @@ export function PerformanceMonitorPlugin(options: PerformanceMonitorOptions = {}
       if (onMetric) {
         onMetric(context);
       }
-    },
 
-    onSlowQuery: (context: QueryExecutionContext) => {
-      if (enableLogging) {
-        console.warn(`[PerformanceMonitor] 🐌 SLOW QUERY (${context.executionTime}ms):`, {
-          method: context.methodName,
-          sql: context.sql.substring(0, 200) + (context.sql.length > 200 ? '...' : ''),
-          threshold: `${slowQueryThreshold}ms`
-        });
-      }
+      // Check if this is a slow query based on threshold
+      if (context.executionTime && context.executionTime > slowQueryThreshold) {
+        if (enableLogging) {
+          console.warn(`[PerformanceMonitor] 🐌 SLOW QUERY (${context.executionTime}ms):`, {
+            method: context.methodName,
+            sql: context.sql.substring(0, 200) + (context.sql.length > 200 ? '...' : ''),
+            threshold: `${slowQueryThreshold}ms`
+          });
+        }
 
-      // Call custom slow query callback
-      if (onSlowQuery) {
-        onSlowQuery(context);
+        // Call custom slow query callback
+        if (onSlowQuery) {
+          onSlowQuery(context);
+        }
       }
     },
 
