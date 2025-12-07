@@ -155,7 +155,8 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
     const tables = extractTablesFromBuilder(context.builder);
     const queryType = getQueryType(context.builder);
 
-    console.log('[QueryMetadataRegistryPlugin] Extracted:', { tables, queryType, sqlPreview: context.sql.substring(0, 100) });
+    console.log('[QueryMetadataRegistryPlugin] Storing SQL (first 200 chars):', context.sql.substring(0, 200));
+    console.log('[QueryMetadataRegistryPlugin] Extracted:', { tables, queryType });
 
     const metadata: QueryMetadata = {
       tables,
@@ -174,7 +175,14 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
  * Falls back to empty array if not found in registry
  */
 export function getTablesFromSQL(sql: string): string[] {
-  return queryMetadataRegistry.getTables(sql);
+  console.log('[getTablesFromSQL] Called with SQL (first 200 chars):', sql.substring(0, 200));
+  console.log('[getTablesFromSQL] Registry size:', queryMetadataRegistry.size());
+  
+  const tables = queryMetadataRegistry.getTables(sql);
+  
+  console.log('[getTablesFromSQL] Found tables:', tables);
+  
+  return tables;
 }
 
 /**
