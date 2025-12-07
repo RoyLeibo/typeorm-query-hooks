@@ -119,8 +119,6 @@ export function enableQueryHooks(): void {
     BuilderClass.prototype.getQuery = function (): string {
       const sql = originalGetQuery.call(this);
       
-      console.log(`[typeorm-query-hooks] getQuery() called, plugins count: ${plugins.length}, SQL: ${sql.substring(0, 100)}...`);
-      
       // Create context for plugins
       const context: QueryHookContext = {
         builder: this,
@@ -132,7 +130,6 @@ export function enableQueryHooks(): void {
       plugins.forEach(plugin => {
         if (plugin.onQueryBuild) {
           try {
-            console.log(`[typeorm-query-hooks] Calling plugin: ${plugin.name}`);
             plugin.onQueryBuild(context);
           } catch (err) {
             console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryBuild failed:`, err);
@@ -161,7 +158,6 @@ export function enableQueryHooks(): void {
           // AND store the builder in AsyncLocalStorage for logger access
           try {
             const sql = this.getQuery();
-            console.log(`[typeorm-query-hooks] ${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
             
             // Store builder in context for logger to access
             const { queryContextStore } = require('./context-store');

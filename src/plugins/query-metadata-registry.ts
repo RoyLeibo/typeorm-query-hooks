@@ -157,13 +157,8 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
   name: 'QueryMetadataRegistry',
 
   onQueryBuild: (context) => {
-    console.log('[QueryMetadataRegistryPlugin] onQueryBuild called!');
     const tables = extractTablesFromBuilder(context.builder);
     const queryType = getQueryType(context.builder);
-
-    console.log('[QueryMetadataRegistryPlugin] Storing SQL - Length:', context.sql.length);
-    console.log('[QueryMetadataRegistryPlugin] SQL LAST 150 chars:', context.sql.substring(context.sql.length - 150));
-    console.log('[QueryMetadataRegistryPlugin] Extracted:', { tables, queryType });
 
     const metadata: QueryMetadata = {
       tables,
@@ -173,7 +168,6 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
     };
 
     queryMetadataRegistry.register(context.sql, metadata);
-    console.log('[QueryMetadataRegistryPlugin] Registry size now:', queryMetadataRegistry.size());
   }
 };
 
@@ -188,18 +182,14 @@ export function getTablesFromSQL(sql: string): string[] {
     const context = queryContextStore.getStore();
     
     if (context && context.tables) {
-      console.log('[getTablesFromSQL] Found tables from AsyncLocalStorage context:', context.tables);
       return context.tables;
     }
   } catch (err) {
     // Fallback to registry lookup
   }
   
-  // Fallback: try registry lookup with SQL matching
-  console.log('[getTablesFromSQL] Falling back to registry lookup - Length:', sql.length);
+  // Fallback: try registry lookup with SQL matching (less reliable due to formatting differences)
   const tables = queryMetadataRegistry.getTables(sql);
-  console.log('[getTablesFromSQL] Found tables from registry:', tables);
-  
   return tables;
 }
 
