@@ -160,6 +160,10 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
     const tables = extractTablesFromBuilder(context.builder);
     const queryType = getQueryType(context.builder);
 
+    if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
+      console.log('[typeorm-query-hooks] QueryMetadataRegistryPlugin - Extracted tables:', tables, 'queryType:', queryType);
+    }
+
     const metadata: QueryMetadata = {
       tables,
       timestamp: context.timestamp,
@@ -182,6 +186,10 @@ export function getTablesFromSQL(sql: string): string[] {
     const context = queryContextStore.getStore();
     
     if (context && context.tables) {
+      // Check if verbose mode is enabled via environment variable
+      if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
+        console.log('[typeorm-query-hooks] getTablesFromSQL - Found from AsyncLocalStorage:', context.tables);
+      }
       return context.tables;
     }
   } catch (err) {
@@ -189,6 +197,9 @@ export function getTablesFromSQL(sql: string): string[] {
   }
   
   // Fallback: try registry lookup with SQL matching (less reliable due to formatting differences)
+  if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
+    console.log('[typeorm-query-hooks] getTablesFromSQL - Falling back to registry lookup');
+  }
   const tables = queryMetadataRegistry.getTables(sql);
   return tables;
 }

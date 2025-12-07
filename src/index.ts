@@ -52,6 +52,20 @@ const plugins: QueryHookPlugin[] = [];
 let isPatched = false;
 
 /**
+ * Verbose mode for debugging
+ */
+let verboseMode = false;
+
+/**
+ * Internal logging helper - only logs when verbose mode is enabled
+ */
+function verboseLog(message: string, ...args: any[]): void {
+  if (verboseMode) {
+    console.log(`[typeorm-query-hooks] ${message}`, ...args);
+  }
+}
+
+/**
  * Register a plugin to receive query hooks
  * @param plugin - The plugin to register
  */
@@ -99,12 +113,22 @@ export function getRegisteredPlugins(): ReadonlyArray<QueryHookPlugin> {
 /**
  * Enable TypeORM query hooks by patching QueryBuilder classes
  * This should be called once at application startup, before any queries are executed
+ * 
+ * @param options Configuration options
+ * @param options.verbose Enable detailed logging for debugging (default: false)
  */
-export function enableQueryHooks(): void {
+export function enableQueryHooks(options?: { verbose?: boolean }): void {
+  if (options?.verbose) {
+    verboseMode = true;
+    console.log('[typeorm-query-hooks] Verbose mode enabled');
+  }
+  
   if (isPatched) {
     console.warn('[typeorm-query-hooks] Hooks are already enabled');
     return;
   }
+  
+  verboseLog('Enabling query hooks...');
 
   const builders = [
     SelectQueryBuilder,
@@ -119,6 +143,8 @@ export function enableQueryHooks(): void {
     BuilderClass.prototype.getQuery = function (): string {
       const sql = originalGetQuery.call(this);
       
+      verboseLog(`getQuery() called, plugins count: ${plugins.length}, SQL: ${sql.substring(0, 100)}...`);
+      
       // Create context for plugins
       const context: QueryHookContext = {
         builder: this,
@@ -130,6 +156,7 @@ export function enableQueryHooks(): void {
       plugins.forEach(plugin => {
         if (plugin.onQueryBuild) {
           try {
+            verboseLog(`Calling plugin: ${plugin.name}`);
             plugin.onQueryBuild(context);
           } catch (err) {
             console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryBuild failed:`, err);
@@ -159,6 +186,8 @@ export function enableQueryHooks(): void {
           try {
             const sql = this.getQuery();
             
+            verboseLog(`${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
+            
             // Store builder in context for logger to access
             const { queryContextStore } = require('./context-store');
             const { extractTablesFromBuilder } = require('./plugins/table-extractor');
@@ -170,6 +199,8 @@ export function enableQueryHooks(): void {
               tables,
               queryType: (this as any).expressionMap?.queryType
             };
+            
+            verboseLog(`${methodName}() - Stored ${tables.length} tables in AsyncLocalStorage`);
             
             // Run the original method within the context
             return queryContextStore.run(context, () => {

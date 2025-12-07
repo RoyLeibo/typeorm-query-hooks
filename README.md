@@ -18,6 +18,34 @@ A plugin-based extension system for TypeORM QueryBuilder that adds hooks and uti
 npm install typeorm-query-hooks
 ```
 
+## Debugging / Verbose Mode
+
+Enable detailed logging to troubleshoot issues:
+
+**Option 1: Environment Variable**
+```bash
+export TYPEORM_QUERY_HOOKS_VERBOSE=true
+npm start
+```
+
+**Option 2: Programmatically**
+```typescript
+import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
+import { TableExtractorPlugin, QueryMetadataRegistryPlugin } from 'typeorm-query-hooks';
+
+// Enable verbose mode
+enableQueryHooks({ verbose: true });
+registerPlugin(TableExtractorPlugin);
+registerPlugin(QueryMetadataRegistryPlugin);
+```
+
+Verbose mode will log:
+- When `getQuery()` is called
+- Which plugins are being invoked
+- Tables extracted from each query
+- AsyncLocalStorage context details
+- Registry lookups and fallbacks
+
 ## Quick Start
 
 ### 1. Enable Hooks (One-time setup)
