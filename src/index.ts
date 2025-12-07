@@ -158,13 +158,31 @@ export function enableQueryHooks(): void {
       if (original) {
         (BuilderClass.prototype as any)[methodName] = function (...args: any[]) {
           // Trigger getQuery() to capture metadata before execution
+          // AND store the builder in AsyncLocalStorage for logger access
           try {
             const sql = this.getQuery();
             console.log(`[typeorm-query-hooks] ${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
+            
+            // Store builder in context for logger to access
+            const { queryContextStore } = require('./context-store');
+            const { extractTablesFromBuilder } = require('./plugins/table-extractor');
+            
+            const tables = extractTablesFromBuilder(this);
+            const context = {
+              builder: this,
+              sql,
+              tables,
+              queryType: (this as any).expressionMap?.queryType
+            };
+            
+            // Run the original method within the context
+            return queryContextStore.run(context, () => {
+              return original.apply(this, args);
+            });
           } catch (err) {
             console.warn(`[typeorm-query-hooks] ${methodName}() - getQuery() failed:`, err);
+            return original.apply(this, args);
           }
-          return original.apply(this, args);
         };
       }
     });

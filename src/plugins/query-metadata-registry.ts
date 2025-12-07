@@ -182,13 +182,23 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
  * Falls back to empty array if not found in registry
  */
 export function getTablesFromSQL(sql: string): string[] {
-  console.log('[getTablesFromSQL] Looking up SQL - Length:', sql.length);
-  console.log('[getTablesFromSQL] SQL LAST 150 chars:', sql.substring(sql.length - 150));
-  console.log('[getTablesFromSQL] Registry size:', queryMetadataRegistry.size());
+  // First, try to get tables from AsyncLocalStorage context (most reliable)
+  try {
+    const { queryContextStore } = require('../context-store');
+    const context = queryContextStore.getStore();
+    
+    if (context && context.tables) {
+      console.log('[getTablesFromSQL] Found tables from AsyncLocalStorage context:', context.tables);
+      return context.tables;
+    }
+  } catch (err) {
+    // Fallback to registry lookup
+  }
   
+  // Fallback: try registry lookup with SQL matching
+  console.log('[getTablesFromSQL] Falling back to registry lookup - Length:', sql.length);
   const tables = queryMetadataRegistry.getTables(sql);
-  
-  console.log('[getTablesFromSQL] Found tables:', tables);
+  console.log('[getTablesFromSQL] Found tables from registry:', tables);
   
   return tables;
 }
