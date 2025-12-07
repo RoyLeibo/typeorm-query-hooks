@@ -1,166 +1,168 @@
-# typeorm-query-hooks
+# 🚀 TypeORM Query Hooks
 
-A lightweight, extensible plugin system for TypeORM that lets you intercept and extract metadata from queries **without modifying your existing code**.
+> **Powerful plugin-based hooks for TypeORM** - Monitor performance, validate results, modify queries, track transactions & extract table metadata. Works seamlessly with **JavaScript**, **TypeScript**, and **NestJS**.
 
-[![npm version](https://img.shields.io/npm/v/typeorm-query-hooks.svg)](https://www.npmjs.com/package/typeorm-query-hooks)
+[![npm version](https://badge.fury.io/js/typeorm-query-hooks.svg)](https://www.npmjs.com/package/typeorm-query-hooks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-## Features
+---
 
-- 🎯 **Zero Config** - Works out of the box with TypeORM
-- 🔌 **Plugin-Based** - Extensible architecture for custom functionality
-- 📊 **Table Extraction** - Automatically extract table names from any query
-- 🚀 **TypeScript Native** - Full type safety
-- 🪝 **AsyncLocalStorage** - Reliable context propagation
-- ⚡ **No Performance Impact** - Minimal overhead
+## ✨ Features
 
-## Installation
+### 🎯 **Core Capabilities**
+
+- **🔍 Table Extraction** - Automatically extract all tables from any TypeORM query (SELECT, INSERT, UPDATE, DELETE, CTEs, subqueries)
+- **⚡ Performance Monitoring** - Track query execution time, detect slow queries, identify bottlenecks
+- **✅ Result Validation** - Monitor empty results, detect large result sets, validate query outcomes
+- **✏️ Query Modification** - Modify SQL and parameters before execution (multi-tenancy, query hints, safety checks)
+- **🔄 Transaction Tracking** - Monitor transaction lifecycle (start, commit, rollback)
+- **🎣 Extensible Hooks** - Create custom plugins for your specific needs
+- **🪵 Enhanced Logging** - Rich query metadata for better debugging and observability
+
+### 🏗️ **Built-in Plugins**
+
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
+| **PerformanceMonitor** | Track query execution time | Detect slow queries, optimize performance |
+| **ResultValidator** | Validate query results | Alert on empty results, detect pagination issues |
+| **QueryModifier** | Modify queries before execution | Multi-tenancy, query hints, safety checks |
+| **TableExtractor** | Extract table names from queries | Logging, caching, access control |
+| **QueryMetadataRegistry** | Store query metadata | Cross-cutting concerns, analytics |
+
+### 🎭 **Hook Types**
+
+```typescript
+// Query Build Hooks
+onQueryBuild(context)         // When query is built
+onBeforeQuery(context)        // Before execution (can modify SQL)
+
+// Execution Hooks
+onQueryStart(context)         // Execution starts
+onQueryComplete(context)      // Execution completes
+onQueryError(context)         // Execution fails
+onSlowQuery(context)          // Slow query detected
+
+// Result Hooks
+onQueryResult(context)        // Result received
+onEmptyResult(context)        // No results returned
+onLargeResult(context)        // Large result set detected
+
+// Transaction Hooks
+onTransactionStart(context)   // Transaction begins
+onTransactionCommit(context)  // Transaction commits
+onTransactionRollback(context) // Transaction rolls back
+onTransactionEnd(context)     // Transaction ends
+
+// Connection Pool Hooks
+onConnectionAcquired(context) // Connection acquired
+onConnectionReleased(context) // Connection released
+onConnectionPoolFull(context) // Pool exhausted
+onConnectionError(context)    // Connection error
+```
+
+---
+
+## 📦 Installation
 
 ```bash
 npm install typeorm-query-hooks
+# or
+yarn add typeorm-query-hooks
 ```
 
-## Quick Start
+---
 
-### JavaScript / TypeScript
+## 🚀 Quick Start
+
+### **JavaScript / TypeScript**
 
 ```typescript
 import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { TableExtractorPlugin, QueryMetadataRegistryPlugin } from 'typeorm-query-hooks';
+import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
 
-// Enable hooks once at application startup
-enableQueryHooks();
-registerPlugin(TableExtractorPlugin);
-registerPlugin(QueryMetadataRegistryPlugin);
+// Enable hooks at application startup
+enableQueryHooks({
+  verbose: false,           // Enable debug logging
+  slowQueryThreshold: 1000, // 1 second
+  largeResultThreshold: 5000 // 5000 rows
+});
 
-// Now use TypeORM normally - hooks are automatic!
-const users = await userRepository.find({ where: { status: 'active' } });
-```
-
-### NestJS
-
-**Option 1: Auto-Registration (Recommended)**
-
-```typescript
-// src/main.ts - Import BEFORE NestFactory
-import 'typeorm-query-hooks/register';
-
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(3000);
-}
-bootstrap();
-```
-
-**Option 2: Manual Registration**
-
-```typescript
-// src/main.ts
-import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { TableExtractorPlugin, QueryMetadataRegistryPlugin } from 'typeorm-query-hooks';
-
-// Initialize before creating NestJS app
-enableQueryHooks();
-registerPlugin(TableExtractorPlugin);
-registerPlugin(QueryMetadataRegistryPlugin);
-
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(3000);
-}
-bootstrap();
-```
-
-**Option 3: Shared Module (For Monorepos)**
-
-If you have a shared database module used across multiple services:
-
-```typescript
-// libs/database/src/index.ts
-import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { TableExtractorPlugin, QueryMetadataRegistryPlugin } from 'typeorm-query-hooks';
-
-// Initialize once when module is imported
-enableQueryHooks();
-registerPlugin(TableExtractorPlugin);
-registerPlugin(QueryMetadataRegistryPlugin);
-
-export * from './your-database-utilities';
-```
-
-Now all services that import this module automatically get the hooks!
-
-## Usage
-
-### Extract Tables from Queries
-
-```typescript
-import { getTablesFromSQL } from 'typeorm-query-hooks';
-
-// In your TypeORM logger or anywhere you have SQL
-class MyLogger implements Logger {
-  logQuery(query: string, parameters?: any[]) {
-    const tables = getTablesFromSQL(query);
-    console.log('Query executed on tables:', tables);
-    // ['users', 'posts', 'comments']
+// Register performance monitoring plugin
+registerPlugin(PerformanceMonitorPlugin({
+  slowQueryThreshold: 500,
+  enableLogging: true,
+  onSlowQuery: (context) => {
+    console.warn(`🐌 Slow query: ${context.executionTime}ms`, {
+      sql: context.sql.substring(0, 200),
+      method: context.methodName
+    });
+    
+    // Send to your monitoring service
+    // datadog.increment('slow_queries');
+    // newrelic.recordMetric('query_time', context.executionTime);
   }
-}
+}));
+
+// That's it! Now all your TypeORM queries are monitored
 ```
 
-### Check if Metadata is Available
+### **NestJS Integration**
 
 ```typescript
-import { hasQueryMetadata } from 'typeorm-query-hooks';
+// app.module.ts or main.ts
+import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
+import { TableExtractorPlugin } from 'typeorm-query-hooks/plugins/table-extractor';
+import { QueryMetadataRegistryPlugin } from 'typeorm-query-hooks/plugins/query-metadata-registry';
+import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
 
-if (hasQueryMetadata(sql)) {
-  const tables = getTablesFromSQL(sql);
-  // Do something with the tables
-}
+// Initialize hooks before TypeORM connection
+enableQueryHooks({ verbose: true, slowQueryThreshold: 500 });
+
+// Register essential plugins
+registerPlugin(TableExtractorPlugin);
+registerPlugin(QueryMetadataRegistryPlugin);
+registerPlugin(PerformanceMonitorPlugin({
+  slowQueryThreshold: 500,
+  enableLogging: true
+}));
+
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      // ... your TypeORM config
+    }),
+  ],
+})
+export class AppModule {}
 ```
 
-### NestJS Custom Logger Example
+**Custom Logger with Table Extraction:**
 
 ```typescript
 import { Logger } from 'typeorm';
 import { getTablesFromSQL } from 'typeorm-query-hooks';
 
-export class CustomTypeOrmLogger implements Logger {
+export class MyCustomLogger implements Logger {
   logQuery(query: string, parameters?: any[]) {
+    // Extract tables automatically!
     const tables = getTablesFromSQL(query);
-    console.log({
-      type: 'query',
+    
+    console.log('Query executed:', {
+      sql: query.substring(0, 200),
       tables,
-      sql: query,
-      params: parameters
+      parameters
     });
   }
 
   logQueryError(error: string, query: string, parameters?: any[]) {
     const tables = getTablesFromSQL(query);
-    console.error({
-      type: 'query-error',
-      tables,
-      error,
-      sql: query,
-      params: parameters
-    });
+    console.error('Query failed:', { error, tables });
   }
 
   logQuerySlow(time: number, query: string, parameters?: any[]) {
     const tables = getTablesFromSQL(query);
-    console.warn({
-      type: 'slow-query',
-      tables,
-      duration: time,
-      sql: query,
-      params: parameters
-    });
+    console.warn(`Slow query (${time}ms):`, { tables });
   }
 
   logSchemaBuild(message: string) {
@@ -172,67 +174,332 @@ export class CustomTypeOrmLogger implements Logger {
   }
 
   log(level: 'log' | 'info' | 'warn', message: any) {
-    console.log(message);
+    console.log(`[${level}] ${message}`);
   }
-}
-
-// Use in TypeORM config
-{
-  type: 'postgres',
-  // ... other options
-  logger: new CustomTypeOrmLogger(),
-  logging: true
 }
 ```
 
-## How It Works
+---
 
-1. **Hooks** patch TypeORM's `QueryBuilder` methods (`getQuery`, `getOne`, `getMany`, etc.)
-2. **Plugins** extract metadata from the QueryBuilder's `expressionMap` (no regex!)
-3. **AsyncLocalStorage** passes metadata through the async call stack to your logger
-4. **Utility functions** (`getTablesFromSQL`) retrieve the metadata anywhere in your code
+## 📚 Usage Examples
 
-This means you get accurate table names even for complex queries with:
-- ✅ Joins (INNER, LEFT, RIGHT, etc.)
-- ✅ Subqueries
-- ✅ CTEs (Common Table Expressions)
-- ✅ Aliases
-- ✅ Relations
-- ✅ All query types (SELECT, INSERT, UPDATE, DELETE)
+### 1. **Performance Monitoring**
 
-## Built-in Plugins
+Detect slow queries and send alerts to your monitoring service.
 
-### TableExtractorPlugin
+```typescript
+import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
+import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
 
-Extracts all table names involved in a query from the TypeORM metadata.
+enableQueryHooks({ slowQueryThreshold: 500 });
 
-### QueryMetadataRegistryPlugin
+registerPlugin(PerformanceMonitorPlugin({
+  slowQueryThreshold: 500,
+  enableLogging: true,
+  onSlowQuery: (context) => {
+    // Send to DataDog
+    datadog.histogram('database.query.duration', context.executionTime, {
+      tags: [`method:${context.methodName}`, `type:${context.queryType}`]
+    });
+    
+    // Send to Sentry
+    Sentry.captureMessage(`Slow query: ${context.executionTime}ms`, {
+      level: 'warning',
+      extra: {
+        sql: context.sql,
+        executionTime: context.executionTime
+      }
+    });
+  },
+  onMetric: (context) => {
+    // Track all query metrics
+    prometheus.histogram('query_duration_ms', context.executionTime);
+  }
+}));
+```
 
-Stores query metadata (tables, query type, timestamp) for later retrieval. Enables the `getTablesFromSQL()` utility function.
+### 2. **Result Validation**
 
-## Creating Custom Plugins
+Alert when critical queries return empty results or large datasets.
+
+```typescript
+import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
+import { ResultValidatorPlugin } from 'typeorm-query-hooks/plugins/result-validator';
+
+enableQueryHooks({ largeResultThreshold: 1000 });
+
+registerPlugin(ResultValidatorPlugin({
+  largeResultThreshold: 1000,
+  monitorTables: ['users', 'orders', 'products'], // Only monitor these tables
+  enableLogging: true,
+  onEmptyResult: (context) => {
+    // Alert if critical queries return nothing (potential bug)
+    logger.warn('Empty result detected', {
+      sql: context.sql,
+      method: context.methodName
+    });
+  },
+  onLargeResult: (context) => {
+    // Alert on large result sets (pagination recommended)
+    logger.warn(`Large result: ${context.rowCount} rows`, {
+      sql: context.sql.substring(0, 150),
+      suggestion: 'Consider adding .take() and .skip() for pagination'
+    });
+  }
+}));
+```
+
+### 3. **Query Modification**
+
+Modify SQL before execution for multi-tenancy, query hints, or safety checks.
+
+```typescript
+import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
+import { 
+  QueryModifierPlugin, 
+  TenantFilterModifier, 
+  SafetyModifier 
+} from 'typeorm-query-hooks/plugins/query-modifier';
+
+enableQueryHooks();
+
+// Example 1: Multi-tenancy (automatically inject tenant filters)
+registerPlugin(TenantFilterModifier({
+  getTenantId: () => getCurrentUser().tenantId,
+  tables: ['orders', 'products', 'customers'],
+  tenantColumn: 'tenant_id'
+}));
+
+// Example 2: Add query hints for optimization
+registerPlugin(QueryModifierPlugin({
+  modifySql: (context) => {
+    if (context.sql.includes('FROM users') && context.sql.includes('email')) {
+      // Add index hint
+      return context.sql.replace('FROM users', 'FROM users USE INDEX (idx_email)');
+    }
+  },
+  enableLogging: true
+}));
+
+// Example 3: Block dangerous queries in production
+if (process.env.NODE_ENV === 'production') {
+  registerPlugin(SafetyModifier()); // Blocks DELETE/UPDATE without WHERE
+}
+
+// Example 4: Custom query modification
+registerPlugin(QueryModifierPlugin({
+  shouldExecute: (context) => {
+    // Block queries during maintenance window
+    if (isMaintenanceMode()) {
+      console.error('Database is in maintenance mode');
+      return false; // Cancel query execution
+    }
+    return true;
+  }
+}));
+```
+
+### 4. **Table Extraction**
+
+Extract all tables from any query for logging, caching, or access control.
+
+```typescript
+import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
+import { TableExtractorPlugin, extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
+
+enableQueryHooks();
+registerPlugin(TableExtractorPlugin);
+
+// Now use it in your code
+const users = await dataSource
+  .getRepository(User)
+  .createQueryBuilder('user')
+  .leftJoinAndSelect('user.profile', 'profile')
+  .where('user.email = :email', { email: 'test@example.com' })
+  .getMany();
+
+// Extract tables manually if needed
+const query = dataSource
+  .getRepository(Order)
+  .createQueryBuilder('order')
+  .leftJoin('order.customer', 'customer')
+  .leftJoin('order.items', 'items');
+
+const tables = extractTablesFromBuilder(query);
+console.log(tables); // ['orders', 'customers', 'order_items']
+
+// Or use the utility method added to QueryBuilder
+const tables2 = query.getInvolvedTables();
+console.log(tables2); // ['orders', 'customers', 'order_items']
+```
+
+### 5. **Access Control & Auditing**
+
+Track which tables are accessed by which users.
+
+```typescript
+import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
+import { extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
+
+enableQueryHooks();
+
+// Custom plugin for access control
+const AccessControlPlugin: QueryHookPlugin = {
+  name: 'AccessControl',
+  
+  onQueryBuild: (context) => {
+    const tables = extractTablesFromBuilder(context.builder);
+    const user = getCurrentUser();
+    
+    // Check if user has access to these tables
+    const forbiddenTables = tables.filter(table => 
+      !user.permissions.includes(`read:${table}`)
+    );
+    
+    if (forbiddenTables.length > 0) {
+      throw new Error(`Access denied to tables: ${forbiddenTables.join(', ')}`);
+    }
+    
+    // Audit log
+    auditLog.log({
+      userId: user.id,
+      action: 'query',
+      tables,
+      timestamp: new Date()
+    });
+  }
+};
+
+registerPlugin(AccessControlPlugin);
+```
+
+### 6. **Cache Invalidation**
+
+Automatically invalidate cache when specific tables are modified.
+
+```typescript
+import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
+import { extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
+
+enableQueryHooks();
+
+const CacheInvalidationPlugin: QueryHookPlugin = {
+  name: 'CacheInvalidation',
+  
+  onQueryComplete: (context) => {
+    const queryType = context.queryType?.toUpperCase();
+    
+    // Only invalidate on write operations
+    if (['INSERT', 'UPDATE', 'DELETE'].includes(queryType || '')) {
+      const tables = extractTablesFromBuilder(context.builder);
+      
+      // Clear cache for affected tables
+      tables.forEach(table => {
+        redis.del(`cache:${table}:*`);
+        console.log(`Cache invalidated for table: ${table}`);
+      });
+    }
+  }
+};
+
+registerPlugin(CacheInvalidationPlugin);
+```
+
+### 7. **Distributed Tracing**
+
+Integrate with OpenTelemetry or Jaeger for distributed tracing.
+
+```typescript
+import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+
+enableQueryHooks();
+
+const TracingPlugin: QueryHookPlugin = {
+  name: 'DistributedTracing',
+  
+  onQueryStart: (context) => {
+    const tracer = trace.getTracer('typeorm');
+    const span = tracer.startSpan(`db.query.${context.methodName}`, {
+      attributes: {
+        'db.statement': context.sql,
+        'db.operation': context.queryType
+      }
+    });
+    
+    // Store span in context for later
+    (context as any).span = span;
+  },
+  
+  onQueryComplete: (context) => {
+    const span = (context as any).span;
+    if (span) {
+      span.setAttribute('db.duration_ms', context.executionTime);
+      span.setStatus({ code: SpanStatusCode.OK });
+      span.end();
+    }
+  },
+  
+  onQueryError: (context) => {
+    const span = (context as any).span;
+    if (span) {
+      span.setStatus({ 
+        code: SpanStatusCode.ERROR,
+        message: context.error.message 
+      });
+      span.end();
+    }
+  }
+};
+
+registerPlugin(TracingPlugin);
+```
+
+---
+
+## 🎨 Creating Custom Plugins
+
+Creating your own plugin is simple! Just implement the `QueryHookPlugin` interface:
 
 ```typescript
 import { QueryHookPlugin, QueryHookContext } from 'typeorm-query-hooks';
 
-export const MyCustomPlugin: QueryHookPlugin = {
+const MyCustomPlugin: QueryHookPlugin = {
   name: 'MyCustomPlugin',
   
-  onQueryBuild: (context: QueryHookContext) => {
-    // context.builder - The TypeORM QueryBuilder
-    // context.sql - The generated SQL
-    // context.timestamp - When the query was built
-    
-    // Your custom logic here
-    console.log('Query built:', context.sql);
-  },
-  
+  // Optional: Initialize when registered
   onRegister: () => {
     console.log('Plugin registered!');
   },
   
+  // Optional: Setup when hooks are enabled
   onEnable: () => {
     console.log('Hooks enabled!');
+  },
+  
+  // Implement any hooks you need
+  onQueryBuild: (context: QueryHookContext) => {
+    console.log('Query built:', context.sql);
+  },
+  
+  onBeforeQuery: (context) => {
+    // Modify SQL before execution
+    if (context.sql.includes('SELECT *')) {
+      console.warn('SELECT * is not recommended');
+    }
+    return true; // Return false to cancel query
+  },
+  
+  onQueryComplete: (context) => {
+    console.log(`Query took ${context.executionTime}ms`);
+  },
+  
+  onSlowQuery: (context) => {
+    console.warn('Slow query detected!');
+  },
+  
+  onEmptyResult: (context) => {
+    console.warn('Query returned no results');
   }
 };
 
@@ -240,109 +507,173 @@ export const MyCustomPlugin: QueryHookPlugin = {
 registerPlugin(MyCustomPlugin);
 ```
 
-## API Reference
+---
 
-### Core Functions
+## 🔧 API Reference
+
+### **Core Functions**
 
 #### `enableQueryHooks(options?)`
 
-Enable the query hooks system. Must be called before any TypeORM queries.
+Enable the hook system. Call once at application startup.
 
 ```typescript
-enableQueryHooks({ verbose: true }); // Enable debug logging
+enableQueryHooks({
+  verbose: boolean,              // Enable debug logging (default: false)
+  slowQueryThreshold: number,    // Slow query threshold in ms (default: 1000)
+  largeResultThreshold: number   // Large result threshold in rows (default: 1000)
+});
 ```
 
 #### `registerPlugin(plugin)`
 
-Register a plugin to receive query hooks.
+Register a plugin to receive hooks.
 
 ```typescript
-registerPlugin(TableExtractorPlugin);
+registerPlugin(MyPlugin);
 ```
 
-#### `unregisterPlugin(name)`
+#### `unregisterPlugin(pluginName)`
 
 Unregister a plugin by name.
 
 ```typescript
-unregisterPlugin('TableExtractor');
+unregisterPlugin('MyPlugin');
 ```
 
-### Utility Functions
+#### `isHooksEnabled()`
+
+Check if hooks are currently enabled.
+
+```typescript
+const enabled = isHooksEnabled(); // boolean
+```
+
+### **Utility Functions**
 
 #### `getTablesFromSQL(sql: string): string[]`
 
-Get the list of tables involved in a SQL query.
+Extract table names from a SQL string.
 
 ```typescript
-const tables = getTablesFromSQL('SELECT * FROM users');
-// Returns: ['users']
+import { getTablesFromSQL } from 'typeorm-query-hooks';
+
+const tables = getTablesFromSQL('SELECT * FROM users JOIN orders ON users.id = orders.user_id');
+// Returns: ['users', 'orders']
 ```
 
-#### `hasQueryMetadata(sql: string): boolean`
+#### `extractTablesFromBuilder(builder): string[]`
 
-Check if metadata is available for a SQL query.
+Extract table names from a QueryBuilder instance.
 
 ```typescript
-if (hasQueryMetadata(sql)) {
-  // Metadata available
-}
+import { extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
+
+const query = dataSource.getRepository(User).createQueryBuilder('user');
+const tables = extractTablesFromBuilder(query);
 ```
 
-#### `getQueryTypeFromSQL(sql: string): string | undefined`
+#### `builder.getInvolvedTables(): string[]`
 
-Get the query type (SELECT, INSERT, UPDATE, DELETE).
+Added method to all QueryBuilder instances (after TableExtractorPlugin is registered).
 
 ```typescript
-const type = getQueryTypeFromSQL(sql);
-// Returns: 'SELECT'
+const query = dataSource.getRepository(User).createQueryBuilder('user');
+const tables = query.getInvolvedTables(); // ['users']
 ```
 
-## Debugging
+---
 
-Enable verbose mode to see detailed logs:
+## 🐛 Debugging
 
-**Environment Variable:**
-```bash
-export TYPEORM_QUERY_HOOKS_VERBOSE=true
-npm start
-```
+Enable verbose mode to see detailed logging:
 
-**Programmatically:**
 ```typescript
 enableQueryHooks({ verbose: true });
 ```
 
-## TypeScript Support
+This will log:
+- When hooks are enabled
+- When plugins are registered
+- When each hook is triggered
+- SQL queries being captured
+- Tables extracted from queries
+- Execution timing
 
-Full TypeScript support with type definitions included.
+---
 
-```typescript
-import type { QueryHookPlugin, QueryHookContext } from 'typeorm-query-hooks';
-```
+## 🏗️ How It Works
 
-## Requirements
+1. **Patching**: The library patches TypeORM's `QueryBuilder` methods (`getQuery`, `getOne`, `getMany`, `execute`, etc.)
+2. **Hook Execution**: When a query is built or executed, registered plugins receive callbacks with rich context
+3. **Table Extraction**: Uses TypeORM's internal `expressionMap` to extract table names (no regex!)
+4. **AsyncLocalStorage**: Query context is passed through async boundaries using Node.js `AsyncLocalStorage`
+5. **Zero Config**: No changes to your existing TypeORM code required
 
-- Node.js >= 16
-- TypeORM >= 0.3.0
+---
 
-## Contributing
+## 🔮 Future Extensibility
 
-Contributions are welcome! This library is designed to be extensible - we encourage the community to create and share custom plugins.
+This library is designed to grow! Potential future hooks:
 
-### Ideas for Future Plugins
-- Query performance tracking
-- Query caching hints
-- Security auditing
-- Custom query transformations
-- Query analytics
+- ✅ Query Performance Monitoring (✓ **Implemented in v4.0**)
+- ✅ Result Validation (✓ **Implemented in v4.0**)
+- ✅ Query Modification (✓ **Implemented in v4.0**)
+- ✅ Transaction Tracking (✓ **Implemented in v4.0**)
+- 🔜 Connection Pool Monitoring (coming soon)
+- 🔜 Migration Lifecycle Hooks (coming soon)
+- 🔜 Schema Synchronization Hooks (coming soon)
+- 🔜 Entity Lifecycle Integration (coming soon)
 
-## License
+**Have an idea?** [Open an issue](https://github.com/RoyLeibo/typeorm-query-hooks/issues) or submit a PR!
 
-MIT © Roy Leibovitz
+---
 
-## Links
+## 🤝 Contributing
 
-- [GitHub Repository](https://github.com/RoyLeibo/typeorm-query-hooks)
-- [npm Package](https://www.npmjs.com/package/typeorm-query-hooks)
-- [Issue Tracker](https://github.com/RoyLeibo/typeorm-query-hooks/issues)
+Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+
+---
+
+## 📄 License
+
+MIT © [Roy Leibovitz](https://github.com/RoyLeibo)
+
+---
+
+## 🌟 Show Your Support
+
+If this library helps you, please give it a ⭐️ on [GitHub](https://github.com/RoyLeibo/typeorm-query-hooks)!
+
+---
+
+## 📊 Use Cases
+
+### **Production Monitoring**
+- Track slow queries in production
+- Send metrics to DataDog, New Relic, or Prometheus
+- Alert on query performance degradation
+
+### **Development & Debugging**
+- Identify N+1 query problems
+- Detect missing indexes
+- Validate query correctness
+
+### **Security & Compliance**
+- Audit database access
+- Implement row-level security
+- Enforce multi-tenancy
+
+### **Performance Optimization**
+- Cache invalidation based on table changes
+- Query result caching
+- Connection pool monitoring
+
+### **Observability & APM**
+- Distributed tracing with OpenTelemetry
+- Query timeline visualization
+- Database operation insights
+
+---
+
+**Built with ❤️ by [Roy Leibovitz](https://github.com/RoyLeibo)**

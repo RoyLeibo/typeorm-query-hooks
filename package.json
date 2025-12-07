@@ -1,7 +1,7 @@
 {
   "name": "typeorm-query-hooks",
-  "version": "3.1.0",
-  "description": "A plugin-based extension system for TypeORM QueryBuilder with hooks and table extraction utilities. No import changes needed!",
+  "version": "4.0.0",
+  "description": "🚀 Powerful plugin-based hooks for TypeORM: Performance monitoring, result validation, query modification, transaction tracking & more. Works with JS, TS & NestJS!",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -19,6 +19,36 @@
       "import": "./dist/nestjs/index.js",
       "require": "./dist/nestjs/index.js",
       "types": "./dist/nestjs/index.d.ts"
+    },
+    "./plugins/table-extractor": {
+      "import": "./dist/plugins/table-extractor.js",
+      "require": "./dist/plugins/table-extractor.js",
+      "types": "./dist/plugins/table-extractor.d.ts"
+    },
+    "./plugins/query-metadata-registry": {
+      "import": "./dist/plugins/query-metadata-registry.js",
+      "require": "./dist/plugins/query-metadata-registry.js",
+      "types": "./dist/plugins/query-metadata-registry.d.ts"
+    },
+    "./plugins/query-logger": {
+      "import": "./dist/plugins/query-logger.js",
+      "require": "./dist/plugins/query-logger.js",
+      "types": "./dist/plugins/query-logger.d.ts"
+    },
+    "./plugins/performance-monitor": {
+      "import": "./dist/plugins/performance-monitor.js",
+      "require": "./dist/plugins/performance-monitor.js",
+      "types": "./dist/plugins/performance-monitor.d.ts"
+    },
+    "./plugins/result-validator": {
+      "import": "./dist/plugins/result-validator.js",
+      "require": "./dist/plugins/result-validator.js",
+      "types": "./dist/plugins/result-validator.d.ts"
+    },
+    "./plugins/query-modifier": {
+      "import": "./dist/plugins/query-modifier.js",
+      "require": "./dist/plugins/query-modifier.js",
+      "types": "./dist/plugins/query-modifier.d.ts"
     }
   },
   "engines": {
@@ -42,13 +72,23 @@
     "instrumentation",
     "nestjs",
     "typescript",
+    "javascript",
     "database",
     "postgres",
+    "postgresql",
     "mysql",
     "sql",
     "table-extraction",
     "monitoring",
-    "observability"
+    "observability",
+    "performance",
+    "slow-query",
+    "query-optimization",
+    "transaction",
+    "multi-tenancy",
+    "apm",
+    "tracing",
+    "metrics"
   ],
   "author": "Roy Leibovitz",
   "license": "MIT",
