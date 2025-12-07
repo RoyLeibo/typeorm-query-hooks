@@ -26,10 +26,16 @@ class QueryMetadataRegistry {
    * Removes extra whitespace and normalizes case
    */
   private normalizeSQL(sql: string): string {
+    // More aggressive normalization to handle edge cases:
+    // 1. Convert to lowercase
+    // 2. Replace all whitespace (including newlines, tabs) with single space
+    // 3. Remove spaces around punctuation
+    // 4. Trim
     return sql
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/\s+/g, ' ')  // All whitespace to single space
+      .replace(/\s*([(),;])\s*/g, '$1')  // Remove spaces around punctuation
+      .trim();
   }
 
   /**
