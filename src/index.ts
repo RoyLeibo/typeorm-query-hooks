@@ -611,6 +611,10 @@ export * from './plugins/query-metadata-registry';
 export * from './plugins/performance-monitor';
 export * from './plugins/result-validator';
 export * from './plugins/query-modifier';
+export * from './plugins/cache-invalidation';
+export * from './plugins/audit-logging';
+export * from './plugins/bulk-operations';
+export * from './plugins/query-complexity';
 
 // Re-export NestJS integration
 export * from './nestjs';

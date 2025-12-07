@@ -5,7 +5,7 @@ import { QueryHookPlugin, QueryExecutionContext } from '../index';
  */
 export interface PerformanceMonitorOptions {
   /**
-   * Threshold in milliseconds for slow query detection (default: 1000)
+   * Threshold in milliseconds for slow query detection (default: 500)
    */
   slowQueryThreshold?: number;
   
@@ -20,7 +20,8 @@ export interface PerformanceMonitorOptions {
   onMetric?: (context: QueryExecutionContext) => void;
   
   /**
-   * Enable console logging (default: false)
+   * Enable console logging for this plugin (default: false)
+   * When true, the plugin will log query completions, slow queries, and errors to console
    */
   enableLogging?: boolean;
 }
@@ -34,15 +35,14 @@ export interface PerformanceMonitorOptions {
  * import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
  * import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
  * 
- * enableQueryHooks({ slowQueryThreshold: 500 });
+ * enableQueryHooks();
  * 
  * registerPlugin(PerformanceMonitorPlugin({
- *   slowQueryThreshold: 500,
- *   enableLogging: true,
+ *   slowQueryThreshold: 300,  // custom threshold (default: 500ms)
+ *   enableLogging: true,      // log to console (default: false)
  *   onSlowQuery: (context) => {
  *     console.warn(`Slow query detected: ${context.executionTime}ms`, {
- *       sql: context.sql.substring(0, 200),
- *       tables: context.tables
+ *       sql: context.sql.substring(0, 200)
  *     });
  *   }
  * }));
@@ -50,7 +50,7 @@ export interface PerformanceMonitorOptions {
  */
 export function PerformanceMonitorPlugin(options: PerformanceMonitorOptions = {}): QueryHookPlugin {
   const {
-    slowQueryThreshold = 1000,
+    slowQueryThreshold = 500, // default 500ms
     onSlowQuery,
     onMetric,
     enableLogging = false

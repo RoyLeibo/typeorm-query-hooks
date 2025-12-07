@@ -22,13 +22,63 @@
 
 ### 🏗️ **Built-in Plugins**
 
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| **PerformanceMonitor** | Track query execution time | Detect slow queries, optimize performance |
-| **ResultValidator** | Validate query results | Alert on empty results, detect pagination issues |
-| **QueryModifier** | Modify queries before execution | Multi-tenancy, query hints, safety checks |
-| **TableExtractor** | Extract table names from queries | Logging, caching, access control |
-| **QueryMetadataRegistry** | Store query metadata | Cross-cutting concerns, analytics |
+| Plugin | Purpose | Priority | Use Case |
+|--------|---------|----------|----------|
+| **🔥 CacheInvalidation** | Auto-invalidate cache on writes | HIGH | Maintain cache consistency automatically |
+| **🔥 AuditLogging** | Track all database operations | HIGH | Compliance, security, forensics |
+| **🔥 PerformanceMonitor** | Track query execution time | HIGH | Detect slow queries, optimize performance |
+| **🟡 BulkOperations** | Detect bulk operations | MEDIUM | Prevent accidental mass updates/deletes |
+| **TableExtractor** | Extract table names from queries | - | Logging, caching, access control |
+| **ResultValidator** | Validate query results | - | Alert on empty results, detect pagination issues |
+| **QueryModifier** | Modify queries before execution | - | Multi-tenancy, query hints, safety checks |
+| **🟢 QueryComplexity** | Warn on complex queries | LOW | Optimize query performance |
+| **QueryMetadataRegistry** | Store query metadata | - | Cross-cutting concerns, analytics |
+| **QueryLogger** | Custom query logging | - | Flexible logging with filters |
+
+**Priority Legend:** 🔥 HIGH - Essential features | 🟡 MEDIUM - Very useful | 🟢 LOW - Nice to have
+
+### ⚙️ **Default Configuration Values**
+
+| Option | Plugin | Default | Description |
+|--------|--------|---------|-------------|
+| **Core Options** ||||
+| `verbose` | Core | `false` | Enable debug logging for the core hook system |
+| **Performance Monitor** ||||
+| `slowQueryThreshold` | PerformanceMonitor | `500` ms | Threshold for slow query detection |
+| **Result Validator** ||||
+| `largeResultThreshold` | ResultValidator | `1000` rows | Threshold for large result set detection |
+| `monitorTables` | ResultValidator | `[]` (all) | Tables to monitor. Empty array = all tables |
+| **Table Extractor** ||||
+| `warnOnEmptyTables` | TableExtractor | `false` | Warn when no tables are extracted |
+| **Cache Invalidation** ||||
+| `invalidateOnTypes` | CacheInvalidation | `['INSERT','UPDATE','DELETE']` | Query types that trigger cache invalidation |
+| `monitorTables` | CacheInvalidation | `[]` (all) | Tables to invalidate cache for. Empty = all |
+| **Audit Logging** ||||
+| `auditTypes` | AuditLogging | `['INSERT','UPDATE','DELETE']` | Query types to audit (only writes by default) |
+| `auditTables` | AuditLogging | `[]` (all) | Tables to audit. Empty = all tables |
+| `includeSql` | AuditLogging | `true` | Include SQL query in audit logs |
+| `includeParameters` | AuditLogging | `false` | Include query parameters in audit logs |
+| **Bulk Operations** ||||
+| `bulkThreshold` | BulkOperations | `100` rows | Threshold for considering operation "bulk" |
+| `monitorTypes` | BulkOperations | `['INSERT','UPDATE','DELETE']` | Query types to monitor for bulk operations |
+| `warnOnBulk` | BulkOperations | `true` | Warn when bulk operation is detected |
+| **Query Complexity** ||||
+| `maxJoins` | QueryComplexity | `5` | Maximum joins before warning |
+| `maxTables` | QueryComplexity | `10` | Maximum tables before warning |
+| `warnOnSubqueries` | QueryComplexity | `false` | Warn on subqueries |
+| `warnOnCTEs` | QueryComplexity | `false` | Warn on Common Table Expressions |
+| **All Plugins** ||||
+| `enableLogging` | All plugins | `false` | Enable console logging for the plugin |
+
+**💡 What does `enableLogging` mean?**
+- When `true`: Plugin outputs console.log/warn/error messages automatically
+- When `false`: Plugin is silent unless you provide custom callbacks (recommended for production)
+- Example: `PerformanceMonitor` with `enableLogging: true` will automatically console.warn slow queries
+
+**💡 What does `monitorTables` mean?**
+- Empty array `[]`: Monitor ALL tables (default for most plugins)
+- Specific tables `['users', 'orders']`: Only monitor these specific tables
+- Use specific tables to reduce overhead and focus on critical data
 
 ### 🎭 **Hook Types**
 
@@ -178,6 +228,76 @@ export class MyCustomLogger implements Logger {
     console.log(`[${level}] ${message}`);
   }
 }
+```
+
+---
+
+## 🔥 HIGH Priority Plugins
+
+### **1. Cache Invalidation Plugin**
+
+Automatically invalidate your cache when data changes. Essential for maintaining cache consistency.
+
+```typescript
+import { CacheInvalidationPlugin } from 'typeorm-query-hooks/plugins/cache-invalidation';
+import Redis from 'ioredis';
+
+const redis = new Redis();
+
+registerPlugin(CacheInvalidationPlugin({
+  onInvalidate: async (tables) => {
+    for (const table of tables) {
+      await redis.del(`cache:${table}:*`);
+    }
+  },
+  monitorTables: ['users', 'products'], // Only these tables (default: all)
+  invalidateOnTypes: ['INSERT', 'UPDATE', 'DELETE'], // (default)
+  enableLogging: true
+}));
+```
+
+### **2. Audit Logging Plugin**
+
+Track all database operations for compliance, security, and forensics.
+
+```typescript
+import { AuditLoggingPlugin } from 'typeorm-query-hooks/plugins/audit-logging';
+
+registerPlugin(AuditLoggingPlugin({
+  getUserId: () => getCurrentUser()?.id,
+  onAudit: async (entry) => {
+    await auditLogRepository.save({
+      userId: entry.userId,
+      action: entry.action,
+      tables: entry.tables,
+      timestamp: entry.timestamp,
+      success: entry.success
+    });
+  },
+  auditTypes: ['INSERT', 'UPDATE', 'DELETE'], // Only writes (default)
+  auditTables: [], // All tables (default)
+  includeSql: true, // (default)
+  includeParameters: false, // Don't log sensitive data (default)
+  enableLogging: true
+}));
+```
+
+### **3. Bulk Operations Plugin**
+
+Prevent accidental mass updates or deletes.
+
+```typescript
+import { BulkOperationsPlugin } from 'typeorm-query-hooks/plugins/bulk-operations';
+
+registerPlugin(BulkOperationsPlugin({
+  bulkThreshold: 100, // Warn if > 100 rows affected (default)
+  warnOnBulk: true, // (default)
+  onBulkOperation: (context, affectedRows) => {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Bulk operation blocked: ${affectedRows} rows`);
+    }
+  }
+}));
 ```
 
 ---
@@ -715,8 +835,8 @@ Each plugin has its own configuration options:
 **PerformanceMonitorPlugin:**
 ```typescript
 registerPlugin(PerformanceMonitorPlugin({
-  slowQueryThreshold: 500,  // ms (default: 1000)
-  enableLogging: true,      // (default: false)
+  slowQueryThreshold: 500,  // ms (default: 500)
+  enableLogging: true,      // console logging (default: false)
   onSlowQuery: (context) => { /* custom handler */ },
   onMetric: (context) => { /* custom handler */ }
 }));
@@ -725,9 +845,9 @@ registerPlugin(PerformanceMonitorPlugin({
 **ResultValidatorPlugin:**
 ```typescript
 registerPlugin(ResultValidatorPlugin({
-  largeResultThreshold: 5000,  // rows (default: 1000)
-  monitorTables: ['users', 'orders'],  // specific tables to monitor
-  enableLogging: true,  // (default: false)
+  largeResultThreshold: 1000,  // rows (default: 1000)
+  monitorTables: ['users', 'orders'],  // specific tables (default: [] = all)
+  enableLogging: true,  // console logging (default: false)
   onEmptyResult: (context) => { /* custom handler */ },
   onLargeResult: (context) => { /* custom handler */ }
 }));
@@ -736,12 +856,12 @@ registerPlugin(ResultValidatorPlugin({
 **TableExtractorPlugin:**
 ```typescript
 registerPlugin(createTableExtractorPlugin({
-  warnOnEmptyTables: true,  // (default: true)
-  enableLogging: false      // (default: false)
+  warnOnEmptyTables: true,  // warn when no tables found (default: false)
+  enableLogging: true       // console logging (default: false)
 }));
 ```
 
-Empty tables warning example:
+Empty tables warning example (when `warnOnEmptyTables: true`):
 ```
 [TableExtractor] ⚠️  No tables extracted from SELECT query.
 This might indicate an issue with table extraction or a raw query without table metadata.

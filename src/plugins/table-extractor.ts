@@ -207,12 +207,14 @@ export function offTablesExtracted(callback: TableExtractorCallback): boolean {
  */
 export interface TableExtractorOptions {
   /**
-   * Show warning when no tables are extracted from a query (default: true)
+   * Show warning when no tables are extracted from a query (default: false)
+   * When true, warns about queries that don't have extractable table metadata
    */
   warnOnEmptyTables?: boolean;
   
   /**
-   * Enable console logging (default: false)
+   * Enable console logging for this plugin (default: false)
+   * When true, the plugin will log extracted table names to console
    */
   enableLogging?: boolean;
 }
@@ -227,14 +229,14 @@ export interface TableExtractorOptions {
  * import { createTableExtractorPlugin } from 'typeorm-query-hooks/plugins/table-extractor';
  * 
  * registerPlugin(createTableExtractorPlugin({
- *   warnOnEmptyTables: true,
- *   enableLogging: false
+ *   warnOnEmptyTables: true,  // warn when no tables found (default: false)
+ *   enableLogging: false      // log to console (default: false)
  * }));
  * ```
  */
 export function createTableExtractorPlugin(options: TableExtractorOptions = {}): QueryHookPlugin {
   const {
-    warnOnEmptyTables = true,
+    warnOnEmptyTables = false, // default false - only warn if explicitly enabled
     enableLogging = false
   } = options;
 

@@ -1,6 +1,6 @@
 {
   "name": "typeorm-query-hooks",
-  "version": "4.1.0",
+  "version": "4.3.0",
   "description": "🚀 Powerful plugin-based hooks for TypeORM: Performance monitoring, result validation, query modification, transaction tracking & more. Works with JS, TS & NestJS!",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -49,6 +49,26 @@
       "import": "./dist/plugins/query-modifier.js",
       "require": "./dist/plugins/query-modifier.js",
       "types": "./dist/plugins/query-modifier.d.ts"
+    },
+    "./plugins/cache-invalidation": {
+      "import": "./dist/plugins/cache-invalidation.js",
+      "require": "./dist/plugins/cache-invalidation.js",
+      "types": "./dist/plugins/cache-invalidation.d.ts"
+    },
+    "./plugins/audit-logging": {
+      "import": "./dist/plugins/audit-logging.js",
+      "require": "./dist/plugins/audit-logging.js",
+      "types": "./dist/plugins/audit-logging.d.ts"
+    },
+    "./plugins/bulk-operations": {
+      "import": "./dist/plugins/bulk-operations.js",
+      "require": "./dist/plugins/bulk-operations.js",
+      "types": "./dist/plugins/bulk-operations.d.ts"
+    },
+    "./plugins/query-complexity": {
+      "import": "./dist/plugins/query-complexity.js",
+      "require": "./dist/plugins/query-complexity.js",
+      "types": "./dist/plugins/query-complexity.d.ts"
     }
   },
   "engines": {

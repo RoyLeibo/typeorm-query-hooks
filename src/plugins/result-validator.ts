@@ -20,12 +20,14 @@ export interface ResultValidatorOptions {
   onLargeResult?: (context: QueryResultContext) => void;
   
   /**
-   * Table names to monitor for empty results (e.g., critical tables)
+   * Table names to monitor for empty results (default: [] - monitors all tables)
+   * Provide specific table names to only monitor those tables: ['users', 'orders']
    */
   monitorTables?: string[];
   
   /**
-   * Enable console logging (default: false)
+   * Enable console logging for this plugin (default: false)
+   * When true, the plugin will log empty results, large results, and general query results to console
    */
   enableLogging?: boolean;
 }
@@ -39,12 +41,12 @@ export interface ResultValidatorOptions {
  * import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
  * import { ResultValidatorPlugin } from 'typeorm-query-hooks/plugins/result-validator';
  * 
- * enableQueryHooks({ largeResultThreshold: 5000 });
+ * enableQueryHooks();
  * 
  * registerPlugin(ResultValidatorPlugin({
- *   largeResultThreshold: 5000,
- *   monitorTables: ['users', 'orders'],
- *   enableLogging: true,
+ *   largeResultThreshold: 5000,        // custom threshold (default: 1000)
+ *   monitorTables: ['users', 'orders'], // specific tables (default: [] = all)
+ *   enableLogging: true,                // log to console (default: false)
  *   onEmptyResult: (context) => {
  *     // Alert if critical queries return nothing
  *     console.warn('Empty result detected', {
