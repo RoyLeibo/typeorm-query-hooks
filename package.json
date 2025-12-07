@@ -14,8 +14,7 @@
     "lint:fix": "eslint src/**/*.ts test/**/*.ts --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "prepublishOnly": "npm run lint && npm run test && npm run build"
+    "test:cov": "jest --coverage"
   },
   "keywords": [
     "typeorm",
