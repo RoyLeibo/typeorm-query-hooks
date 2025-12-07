@@ -4,6 +4,23 @@
   "description": "A plugin-based extension system for TypeORM QueryBuilder with hooks and table extraction utilities. No import changes needed!",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./register": {
+      "import": "./dist/register.js",
+      "require": "./dist/register.js",
+      "types": "./dist/register.d.ts"
+    },
+    "./nestjs": {
+      "import": "./dist/nestjs/index.js",
+      "require": "./dist/nestjs/index.js",
+      "types": "./dist/nestjs/index.d.ts"
+    }
+  },
   "engines": {
     "node": ">=16.0.0"
   },
