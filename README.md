@@ -22,20 +22,18 @@
 
 ### 🏗️ **Built-in Plugins**
 
-| Plugin | Purpose | Priority | Use Case |
-|--------|---------|----------|----------|
-| **🔥 CacheInvalidation** | Auto-invalidate cache on writes | HIGH | Maintain cache consistency automatically |
-| **🔥 AuditLogging** | Track all database operations | HIGH | Compliance, security, forensics |
-| **🔥 PerformanceMonitor** | Track query execution time | HIGH | Detect slow queries, optimize performance |
-| **🟡 BulkOperations** | Detect bulk operations | MEDIUM | Prevent accidental mass updates/deletes |
-| **TableExtractor** | Extract table names from queries | - | Logging, caching, access control |
-| **ResultValidator** | Validate query results | - | Alert on empty results, detect pagination issues |
-| **QueryModifier** | Modify queries before execution | - | Multi-tenancy, query hints, safety checks |
-| **🟢 QueryComplexity** | Warn on complex queries | LOW | Optimize query performance |
-| **QueryMetadataRegistry** | Store query metadata | - | Cross-cutting concerns, analytics |
-| **QueryLogger** | Custom query logging | - | Flexible logging with filters |
-
-**Priority Legend:** 🔥 HIGH - Essential features | 🟡 MEDIUM - Very useful | 🟢 LOW - Nice to have
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
+| **🗑️ CacheInvalidation** | Auto-invalidate cache on writes | Maintain cache consistency automatically |
+| **📝 AuditLogging** | Track all database operations | Compliance, security, forensics |
+| **⚡ PerformanceMonitor** | Track query execution time | Detect slow queries, optimize performance |
+| **📊 BulkOperations** | Detect bulk operations | Prevent accidental mass updates/deletes |
+| **🏷️ TableExtractor** | Extract table names from queries | Logging, caching, access control |
+| **✅ ResultValidator** | Validate query results | Alert on empty results, detect pagination issues |
+| **✏️ QueryModifier** | Modify queries before execution | Multi-tenancy, query hints, safety checks |
+| **🔍 QueryComplexity** | Warn on complex queries | Optimize query performance |
+| **💾 QueryMetadataRegistry** | Store query metadata | Cross-cutting concerns, analytics |
+| **🪵 QueryLogger** | Custom query logging | Flexible logging with filters |
 
 ### ⚙️ **Default Configuration Values**
 
@@ -232,7 +230,7 @@ export class MyCustomLogger implements Logger {
 
 ---
 
-## 🔥 HIGH Priority Plugins
+## 🚀 Featured Plugins
 
 ### **1. Cache Invalidation Plugin**
 
