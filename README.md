@@ -83,9 +83,10 @@ import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performanc
 
 // Enable hooks at application startup
 enableQueryHooks({
-  verbose: false,           // Enable debug logging
-  slowQueryThreshold: 1000, // 1 second
-  largeResultThreshold: 5000 // 5000 rows
+  verbose: false,              // Enable debug logging
+  slowQueryThreshold: 1000,    // Slow query threshold in ms (default: 1000)
+  largeResultThreshold: 5000,  // Large result set threshold in rows (default: 1000)
+  warnOnEmptyTables: true      // Warn when no tables are extracted (default: true)
 });
 
 // Register performance monitoring plugin
@@ -521,7 +522,8 @@ Enable the hook system. Call once at application startup.
 enableQueryHooks({
   verbose: boolean,              // Enable debug logging (default: false)
   slowQueryThreshold: number,    // Slow query threshold in ms (default: 1000)
-  largeResultThreshold: number   // Large result threshold in rows (default: 1000)
+  largeResultThreshold: number,  // Large result threshold in rows (default: 1000)
+  warnOnEmptyTables: boolean     // Warn when no tables are extracted (default: true)
 });
 ```
 
@@ -599,6 +601,23 @@ This will log:
 - SQL queries being captured
 - Tables extracted from queries
 - Execution timing
+
+### Empty Tables Warning
+
+By default, the library warns when no tables are extracted from a query:
+
+```
+[typeorm-query-hooks] ⚠️  No tables extracted from SELECT query.
+This might indicate an issue with table extraction or a raw query without table metadata.
+```
+
+This helps identify potential issues with table extraction or raw queries. To disable this warning:
+
+```typescript
+enableQueryHooks({ 
+  warnOnEmptyTables: false  // Disable empty tables warning
+});
+```
 
 ---
 

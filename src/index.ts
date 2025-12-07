@@ -295,10 +295,16 @@ export interface QueryHooksOptions {
    * Threshold for large result set detection (default: 1000 rows)
    */
   largeResultThreshold?: number;
+  
+  /**
+   * Show warning when no tables are extracted from a query (default: true)
+   */
+  warnOnEmptyTables?: boolean;
 }
 
 let slowQueryThreshold = 1000; // default 1 second
 let largeResultThreshold = 1000; // default 1000 rows
+let warnOnEmptyTables = true; // default true
 
 /**
  * Enable TypeORM query hooks by patching QueryBuilder classes
@@ -318,6 +324,10 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
   
   if (options?.largeResultThreshold !== undefined) {
     largeResultThreshold = options.largeResultThreshold;
+  }
+  
+  if (options?.warnOnEmptyTables !== undefined) {
+    warnOnEmptyTables = options.warnOnEmptyTables;
   }
   
   if (isPatched) {
@@ -438,6 +448,21 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           
           const tables = extractTablesFromBuilder(this);
           const queryType = (this as any).expressionMap?.queryType;
+          
+          // Warn if no tables were extracted (if warnings are enabled)
+          if (warnOnEmptyTables && tables.length === 0) {
+            const operationType = queryType ? queryType.toUpperCase() : 'UNKNOWN';
+            console.warn(
+              `[typeorm-query-hooks] ⚠️  No tables extracted from ${operationType} query. ` +
+              `This might indicate an issue with table extraction or a raw query without table metadata.`,
+              {
+                method: methodName,
+                queryType: operationType,
+                sqlPreview: sql.substring(0, 150) + (sql.length > 150 ? '...' : '')
+              }
+            );
+          }
+          
           const context = {
             builder: this,
             sql,
