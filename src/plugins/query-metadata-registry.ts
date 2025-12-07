@@ -151,8 +151,11 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
   name: 'QueryMetadataRegistry',
 
   onQueryBuild: (context) => {
+    console.log('[QueryMetadataRegistryPlugin] onQueryBuild called!');
     const tables = extractTablesFromBuilder(context.builder);
     const queryType = getQueryType(context.builder);
+
+    console.log('[QueryMetadataRegistryPlugin] Extracted:', { tables, queryType, sqlPreview: context.sql.substring(0, 100) });
 
     const metadata: QueryMetadata = {
       tables,
@@ -162,6 +165,7 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
     };
 
     queryMetadataRegistry.register(context.sql, metadata);
+    console.log('[QueryMetadataRegistryPlugin] Registry size now:', queryMetadataRegistry.size());
   }
 };
 
