@@ -1,6 +1,6 @@
 {
   "name": "typeorm-query-hooks",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "description": "A plugin-based extension system for TypeORM QueryBuilder with hooks and table extraction utilities. No import changes needed!",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
