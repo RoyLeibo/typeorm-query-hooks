@@ -26,6 +26,50 @@
 - 🗑️ **Cache Invalidation** - Auto-invalidate on data changes
 - 🔄 **Result Transformation** - Auto-convert to DTOs, remove sensitive data
 
+### **Extensible:**
+- 🎨 **Create Custom Plugins** - Build your own hooks for specific needs
+- 🔌 **20+ Built-in Plugins** - Ready-to-use solutions for common problems
+- 🎯 **Full TypeScript Support** - Type-safe plugin development
+
+---
+
+## 🏗️ **20 Powerful Plugins Included**
+
+### **🔥 Critical Performance & Safety**
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
+| [🕵️ **NPlusOneDetector**](#%EF%B8%8F-nplusonedetector---detect-n1-query-problems-the-1-performance-killer) | Detect N+1 query problems | #1 performance killer - catches 80% of issues |
+| [🛡️ **SafetyGuard**](#%EF%B8%8F-safetyguard---block-dangerous-database-operations) | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL |
+| [💧 **ConnectionLeakDetector**](#-connectionleakdetector---find-connection-leaks-before-they-crash-your-app) | Find connection leaks | Prevents pool exhaustion and app crashes |
+| [⏱️ **QueryTimeout**](#%EF%B8%8F-querytimeout---automatic-query-timeouts) | Automatic query timeouts | Prevents queries from hanging forever |
+| [🧟 **IdleTransactionMonitor**](#-idletransactionmonitor---detect-zombie-transactions) | Detect zombie transactions | Prevents deadlocks from idle transactions |
+
+### **🔬 Analysis & Debugging**
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
+| [📍 **QuerySourceTracer**](#-querysourcetracer---csi-database-find-exact-fileline-in-your-code) | Show where queries originate | CSI: Database - find exact file:line in your code |
+| [🔬 **SlowQueryAnalyzer**](#-slowqueryanalyzer---auto-run-explain-on-slow-queries) | Auto-run EXPLAIN on slow queries | Automatic query plan analysis |
+| [⚠️ **LazyLoadingDetector**](#%EF%B8%8F-lazyloadingdetector---detect-lazy-loaded-relations-hidden-n1) | Detect lazy-loaded relations | Catches hidden N+1 problems |
+| [⚡ **PerformanceMonitor**](#-performancemonitor---track-query-execution-time) | Track query execution time | Monitor and optimize performance |
+
+### **🗃️ Data Management**
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
+| [🗑️ **CacheInvalidation**](#%EF%B8%8F-cacheinvalidation---auto-invalidate-cache-on-data-changes) | Auto-invalidate cache on writes | Maintain cache consistency |
+| [📝 **AuditLogging**](#-auditlogging---track-all-database-operations-gdprhipaa-ready) | Track all database operations | Compliance (GDPR, HIPAA), security |
+| [📊 **BulkOperations**](#-bulkoperations---prevent-accidental-mass-updatesdeletes) | Detect bulk operations | Prevent accidental mass updates |
+| [🔄 **QueryResultTransformer**](#-queryresulttransformer---auto-transform-results-to-dtos) | Transform query results | Auto-convert to DTOs, remove sensitive data |
+
+### **🛠️ Utilities**
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
+| [🏷️ **TableExtractor**](#%EF%B8%8F-tableextractor---extract-table-names-from-queries) | Extract table names from queries | Logging, caching, access control |
+| [✅ **ResultValidator**](#-resultvalidator---validate-query-results) | Validate query results | Alert on empty results, pagination issues |
+| [✏️ **QueryModifier**](#%EF%B8%8F-querymodifier---modify-queries-before-execution) | Modify queries before execution | Multi-tenancy, query hints, safety |
+| [🔍 **QueryComplexity**](#-querycomplexity---warn-on-complex-queries) | Warn on complex queries | Identify queries needing optimization |
+| [💾 **QueryMetadataRegistry**](#-querymetadataregistry---store-query-metadata) | Store query metadata | Analytics, cross-cutting concerns |
+| [🪵 **QueryLogger**](#-querylogger---custom-query-logging-with-filters) | Custom query logging | Flexible logging with filters |
+
 ---
 
 ## 📦 Installation
