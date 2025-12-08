@@ -1,6 +1,6 @@
 {
   "name": "typeorm-query-hooks",
-  "version": "4.3.0",
+  "version": "5.0.0",
   "description": "🚀 Powerful plugin-based hooks for TypeORM: Performance monitoring, result validation, query modification, transaction tracking & more. Works with JS, TS & NestJS!",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -69,6 +69,51 @@
       "import": "./dist/plugins/query-complexity.js",
       "require": "./dist/plugins/query-complexity.js",
       "types": "./dist/plugins/query-complexity.d.ts"
+    },
+    "./plugins/n-plus-one-detector": {
+      "import": "./dist/plugins/n-plus-one-detector.js",
+      "require": "./dist/plugins/n-plus-one-detector.js",
+      "types": "./dist/plugins/n-plus-one-detector.d.ts"
+    },
+    "./plugins/query-source-tracer": {
+      "import": "./dist/plugins/query-source-tracer.js",
+      "require": "./dist/plugins/query-source-tracer.js",
+      "types": "./dist/plugins/query-source-tracer.d.ts"
+    },
+    "./plugins/safety-guard": {
+      "import": "./dist/plugins/safety-guard.js",
+      "require": "./dist/plugins/safety-guard.js",
+      "types": "./dist/plugins/safety-guard.d.ts"
+    },
+    "./plugins/slow-query-analyzer": {
+      "import": "./dist/plugins/slow-query-analyzer.js",
+      "require": "./dist/plugins/slow-query-analyzer.js",
+      "types": "./dist/plugins/slow-query-analyzer.d.ts"
+    },
+    "./plugins/idle-transaction-monitor": {
+      "import": "./dist/plugins/idle-transaction-monitor.js",
+      "require": "./dist/plugins/idle-transaction-monitor.js",
+      "types": "./dist/plugins/idle-transaction-monitor.d.ts"
+    },
+    "./plugins/query-timeout": {
+      "import": "./dist/plugins/query-timeout.js",
+      "require": "./dist/plugins/query-timeout.js",
+      "types": "./dist/plugins/query-timeout.d.ts"
+    },
+    "./plugins/connection-leak-detector": {
+      "import": "./dist/plugins/connection-leak-detector.js",
+      "require": "./dist/plugins/connection-leak-detector.js",
+      "types": "./dist/plugins/connection-leak-detector.d.ts"
+    },
+    "./plugins/lazy-loading-detector": {
+      "import": "./dist/plugins/lazy-loading-detector.js",
+      "require": "./dist/plugins/lazy-loading-detector.js",
+      "types": "./dist/plugins/lazy-loading-detector.d.ts"
+    },
+    "./plugins/query-result-transformer": {
+      "import": "./dist/plugins/query-result-transformer.js",
+      "require": "./dist/plugins/query-result-transformer.js",
+      "types": "./dist/plugins/query-result-transformer.d.ts"
     }
   },
   "engines": {

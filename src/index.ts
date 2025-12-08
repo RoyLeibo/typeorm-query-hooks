@@ -615,6 +615,15 @@ export * from './plugins/cache-invalidation';
 export * from './plugins/audit-logging';
 export * from './plugins/bulk-operations';
 export * from './plugins/query-complexity';
+export * from './plugins/n-plus-one-detector';
+export * from './plugins/query-source-tracer';
+export * from './plugins/safety-guard';
+export * from './plugins/slow-query-analyzer';
+export * from './plugins/idle-transaction-monitor';
+export * from './plugins/query-timeout';
+export * from './plugins/connection-leak-detector';
+export * from './plugins/lazy-loading-detector';
+export * from './plugins/query-result-transformer';
 
 // Re-export NestJS integration
 export * from './nestjs';

@@ -20,19 +20,41 @@
 - **🎣 Extensible Hooks** - Create custom plugins for your specific needs
 - **🪵 Enhanced Logging** - Rich query metadata for better debugging and observability
 
-### 🏗️ **Built-in Plugins**
+### 🏗️ **Built-in Plugins** (20 Total!)
 
+#### **🔥 Critical Performance & Safety**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| **🗑️ CacheInvalidation** | Auto-invalidate cache on writes | Maintain cache consistency automatically |
-| **📝 AuditLogging** | Track all database operations | Compliance, security, forensics |
-| **⚡ PerformanceMonitor** | Track query execution time | Detect slow queries, optimize performance |
-| **📊 BulkOperations** | Detect bulk operations | Prevent accidental mass updates/deletes |
+| **🕵️ NPlusOneDetector** | Detect N+1 query problems | #1 performance killer - catches 80% of issues |
+| **🛡️ SafetyGuard** | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL |
+| **💧 ConnectionLeakDetector** | Find connection leaks | Prevents pool exhaustion and app crashes |
+| **⏱️ QueryTimeout** | Automatic query timeouts | Prevents queries from hanging forever |
+| **🧟 IdleTransactionMonitor** | Detect zombie transactions | Prevents deadlocks from idle transactions |
+
+#### **🔬 Analysis & Debugging**
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
+| **📍 QuerySourceTracer** | Show where queries originate | CSI: Database - find exact file:line in your code |
+| **🔬 SlowQueryAnalyzer** | Auto-run EXPLAIN on slow queries | Automatic query plan analysis |
+| **⚠️ LazyLoadingDetector** | Detect lazy-loaded relations | Catches hidden N+1 problems |
+| **⚡ PerformanceMonitor** | Track query execution time | Monitor and optimize performance |
+
+#### **🗃️ Data Management**
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
+| **🗑️ CacheInvalidation** | Auto-invalidate cache on writes | Maintain cache consistency |
+| **📝 AuditLogging** | Track all database operations | Compliance (GDPR, HIPAA), security |
+| **📊 BulkOperations** | Detect bulk operations | Prevent accidental mass updates |
+| **🔄 QueryResultTransformer** | Transform query results | Auto-convert to DTOs, remove sensitive data |
+
+#### **🛠️ Utilities**
+| Plugin | Purpose | Use Case |
+|--------|---------|----------|
 | **🏷️ TableExtractor** | Extract table names from queries | Logging, caching, access control |
-| **✅ ResultValidator** | Validate query results | Alert on empty results, detect pagination issues |
-| **✏️ QueryModifier** | Modify queries before execution | Multi-tenancy, query hints, safety checks |
-| **🔍 QueryComplexity** | Warn on complex queries | Optimize query performance |
-| **💾 QueryMetadataRegistry** | Store query metadata | Cross-cutting concerns, analytics |
+| **✅ ResultValidator** | Validate query results | Alert on empty results, pagination issues |
+| **✏️ QueryModifier** | Modify queries before execution | Multi-tenancy, query hints, safety |
+| **🔍 QueryComplexity** | Warn on complex queries | Identify queries needing optimization |
+| **💾 QueryMetadataRegistry** | Store query metadata | Analytics, cross-cutting concerns |
 | **🪵 QueryLogger** | Custom query logging | Flexible logging with filters |
 
 ### ⚙️ **Default Configuration Values**
