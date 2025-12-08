@@ -38,37 +38,37 @@
 ### **🔥 Critical Performance & Safety**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| [🕵️ **NPlusOneDetector**](#nplusonedetector) | Detect N+1 query problems | #1 performance killer - catches 80% of issues |
-| [🛡️ **SafetyGuard**](#safetyguard) | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL |
-| [💧 **ConnectionLeakDetector**](#connectionleakdetector) | Find connection leaks | Prevents pool exhaustion and app crashes |
-| [⏱️ **QueryTimeout**](#querytimeout) | Automatic query timeouts | Prevents queries from hanging forever |
-| [🧟 **IdleTransactionMonitor**](#idletransactionmonitor) | Detect zombie transactions | Prevents deadlocks from idle transactions |
+| [🕵️ **NPlusOneDetector**](#%EF%B8%8F-nplusonedetector---detect-n1-query-problems-the-1-performance-killer) | Detect N+1 query problems | #1 performance killer - catches 80% of issues |
+| [🛡️ **SafetyGuard**](#%EF%B8%8F-safetyguard---block-dangerous-database-operations) | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL |
+| [💧 **ConnectionLeakDetector**](#-connectionleakdetector---find-connection-leaks-before-they-crash-your-app) | Find connection leaks | Prevents pool exhaustion and app crashes |
+| [⏱️ **QueryTimeout**](#%EF%B8%8F-querytimeout---automatic-query-timeouts) | Automatic query timeouts | Prevents queries from hanging forever |
+| [🧟 **IdleTransactionMonitor**](#-idletransactionmonitor---detect-zombie-transactions) | Detect zombie transactions | Prevents deadlocks from idle transactions |
 
 ### **🔬 Analysis & Debugging**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| [📍 **QuerySourceTracer**](#querysourcetracer) | Show where queries originate | CSI: Database - find exact file:line in your code |
-| [🔬 **SlowQueryAnalyzer**](#slowqueryanalyzer) | Auto-run EXPLAIN on slow queries | Automatic query plan analysis |
-| [⚠️ **LazyLoadingDetector**](#lazyloadingdetector) | Detect lazy-loaded relations | Catches hidden N+1 problems |
-| [⚡ **PerformanceMonitor**](#performancemonitor) | Track query execution time | Monitor and optimize performance |
+| [📍 **QuerySourceTracer**](#-querysourcetracer---csi-database-find-exact-fileline-in-your-code) | Show where queries originate | CSI: Database - find exact file:line in your code |
+| [🔬 **SlowQueryAnalyzer**](#-slowqueryanalyzer---auto-run-explain-on-slow-queries) | Auto-run EXPLAIN on slow queries | Automatic query plan analysis |
+| [⚠️ **LazyLoadingDetector**](#%EF%B8%8F-lazyloadingdetector---detect-lazy-loaded-relations-hidden-n1) | Detect lazy-loaded relations | Catches hidden N+1 problems |
+| [⚡ **PerformanceMonitor**](#-performancemonitor---track-query-execution-time) | Track query execution time | Monitor and optimize performance |
 
 ### **🗃️ Data Management**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| [🗑️ **CacheInvalidation**](#cacheinvalidation) | Auto-invalidate cache on writes | Maintain cache consistency |
-| [📝 **AuditLogging**](#auditlogging) | Track all database operations | Compliance (GDPR, HIPAA), security |
-| [📊 **BulkOperations**](#bulkoperations) | Detect bulk operations | Prevent accidental mass updates |
-| [🔄 **QueryResultTransformer**](#queryresulttransformer) | Transform query results | Auto-convert to DTOs, remove sensitive data |
+| [🗑️ **CacheInvalidation**](#%EF%B8%8F-cacheinvalidation---auto-invalidate-cache-on-data-changes) | Auto-invalidate cache on writes | Maintain cache consistency |
+| [📝 **AuditLogging**](#-auditlogging---track-all-database-operations-gdprhipaa-ready) | Track all database operations | Compliance (GDPR, HIPAA), security |
+| [📊 **BulkOperations**](#-bulkoperations---prevent-accidental-mass-updatesdeletes) | Detect bulk operations | Prevent accidental mass updates |
+| [🔄 **QueryResultTransformer**](#-queryresulttransformer---auto-transform-results-to-dtos) | Transform query results | Auto-convert to DTOs, remove sensitive data |
 
 ### **🛠️ Utilities**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| [🏷️ **TableExtractor**](#tableextractor) | Extract table names from queries | Logging, caching, access control |
-| [✅ **ResultValidator**](#resultvalidator) | Validate query results | Alert on empty results, pagination issues |
-| [✏️ **QueryModifier**](#querymodifier) | Modify queries before execution | Multi-tenancy, query hints, safety |
-| [🔍 **QueryComplexity**](#querycomplexity) | Warn on complex queries | Identify queries needing optimization |
-| [💾 **QueryMetadataRegistry**](#querymetadataregistry) | Store query metadata | Analytics, cross-cutting concerns |
-| [🪵 **QueryLogger**](#querylogger) | Custom query logging | Flexible logging with filters |
+| [🏷️ **TableExtractor**](#%EF%B8%8F-tableextractor---extract-table-names-from-queries) | Extract table names from queries | Logging, caching, access control |
+| [✅ **ResultValidator**](#-resultvalidator---validate-query-results) | Validate query results | Alert on empty results, pagination issues |
+| [✏️ **QueryModifier**](#%EF%B8%8F-querymodifier---modify-queries-before-execution) | Modify queries before execution | Multi-tenancy, query hints, safety |
+| [🔍 **QueryComplexity**](#-querycomplexity---warn-on-complex-queries) | Warn on complex queries | Identify queries needing optimization |
+| [💾 **QueryMetadataRegistry**](#-querymetadataregistry---store-query-metadata) | Store query metadata | Analytics, cross-cutting concerns |
+| [🪵 **QueryLogger**](#-querylogger---custom-query-logging-with-filters) | Custom query logging | Flexible logging with filters |
 
 ---
 
@@ -95,7 +95,7 @@ enableQueryHooks({
 });
 ```
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -127,13 +127,12 @@ registerPlugin(NPlusOneDetectorPlugin({
 
 ### **🔥 Critical Performance & Safety**
 
-<details id="nplusonedetector">
-<summary><strong>🕵️ NPlusOneDetector</strong> - Detect N+1 query problems (THE #1 performance killer)</summary>
+#### **🕵️ NPlusOneDetector** - Detect N+1 query problems (THE #1 performance killer)
 
-#### **What it does:**
+**What it does:**
 Detects when the same query runs repeatedly in a short time window - the classic N+1 problem.
 
-#### **The Problem:**
+**The Problem:**
 ```typescript
 // ❌ BAD - Causes N+1 problem
 const users = await userRepository.find();  // 1 query
@@ -143,7 +142,7 @@ for (const user of users) {  // Loop
 // Total: 101 queries for 100 users!
 ```
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -154,7 +153,7 @@ for (const user of users) {  // Loop
 | `onNPlusOneDetected` | `function` | `undefined` | Callback when N+1 is detected |
 | `enableLogging` | `boolean` | `false` | Auto-log N+1 warnings to console |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { NPlusOneDetectorPlugin } from 'typeorm-query-hooks/plugins/n-plus-one-detector';
@@ -176,20 +175,19 @@ registerPlugin(NPlusOneDetectorPlugin({
 }));
 ```
 
-</details>
+---
 
-<details id="safetyguard">
-<summary><strong>🛡️ SafetyGuard</strong> - Block dangerous database operations</summary>
+#### **🛡️ SafetyGuard** - Block dangerous database operations
 
-#### **What it does:**
+**What it does:**
 Prevents catastrophic mistakes like `UPDATE users SET role='admin'` (no WHERE = ALL users become admin!)
 
-#### **Real disasters this prevents:**
+**Real disasters this prevents:**
 - Junior dev ran `UPDATE users SET email='test@test.com'` without WHERE → 1M users had same email
 - Migration with `DROP TABLE` ran in production
 - `DELETE FROM orders` without WHERE → Lost 6 months of data
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -204,7 +202,7 @@ Prevents catastrophic mistakes like `UPDATE users SET role='admin'` (no WHERE = 
 | `onBlocked` | `function` | `undefined` | Callback when operation is blocked |
 | `enableLogging` | `boolean` | `false` | Auto-log blocked operations |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { SafetyGuardPlugin } from 'typeorm-query-hooks/plugins/safety-guard';
@@ -227,15 +225,14 @@ registerPlugin(SafetyGuardPlugin({
 }));
 ```
 
-</details>
+---
 
-<details id="connectionleakdetector">
-<summary><strong>💧 ConnectionLeakDetector</strong> - Find connection leaks before they crash your app</summary>
+#### **💧 ConnectionLeakDetector** - Find connection leaks before they crash your app
 
-#### **What it does:**
+**What it does:**
 Detects connections that are acquired but never released - leads to pool exhaustion.
 
-#### **The Problem:**
+**The Problem:**
 ```typescript
 const queryRunner = dataSource.createQueryRunner();
 await queryRunner.connect();
@@ -243,7 +240,7 @@ await queryRunner.query('SELECT ...');
 // ❌ FORGOT queryRunner.release() - connection leaked!
 ```
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -254,7 +251,7 @@ await queryRunner.query('SELECT ...');
 | `onPoolWarning` | `function` | `undefined` | Callback when pool capacity warning |
 | `enableLogging` | `boolean` | `false` | Auto-log leak warnings |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { ConnectionLeakDetectorPlugin } from 'typeorm-query-hooks/plugins/connection-leak-detector';
@@ -274,15 +271,14 @@ registerPlugin(ConnectionLeakDetectorPlugin({
 }));
 ```
 
-</details>
 
-<details id="querytimeout">
-<summary><strong>⏱️ QueryTimeout</strong> - Automatic query timeouts</summary>
 
-#### **What it does:**
+#### **⏱️ QueryTimeout** - Automatic query timeouts
+
+**What it does:**
 Prevents queries from hanging forever and blocking the connection pool.
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -293,7 +289,7 @@ Prevents queries from hanging forever and blocking the connection pool.
 | `onTimeout` | `function` | `undefined` | Callback when timeout occurs |
 | `enableLogging` | `boolean` | `false` | Auto-log timeouts |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { QueryTimeoutPlugin } from 'typeorm-query-hooks/plugins/query-timeout';
@@ -314,15 +310,14 @@ registerPlugin(QueryTimeoutPlugin({
 }));
 ```
 
-</details>
 
-<details id="idletransactionmonitor">
-<summary><strong>🧟 IdleTransactionMonitor</strong> - Detect zombie transactions</summary>
 
-#### **What it does:**
+#### **🧟 IdleTransactionMonitor** - Detect zombie transactions
+
+**What it does:**
 Detects transactions that sit idle (no queries running) - causes deadlocks.
 
-#### **The Problem:**
+**The Problem:**
 ```typescript
 await queryRunner.startTransaction();
 await queryRunner.manager.save(user);
@@ -334,7 +329,7 @@ await fetch('https://api.slow-service.com');  // 5 seconds
 await queryRunner.commitTransaction();
 ```
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -344,7 +339,7 @@ await queryRunner.commitTransaction();
 | `onZombieDetected` | `function` | `undefined` | Callback when zombie detected |
 | `enableLogging` | `boolean` | `false` | Auto-log zombie warnings |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { IdleTransactionMonitorPlugin } from 'typeorm-query-hooks/plugins/idle-transaction-monitor';
@@ -364,26 +359,25 @@ registerPlugin(IdleTransactionMonitorPlugin({
 }));
 ```
 
-</details>
+
 
 ---
 
 ### **🔬 Analysis & Debugging**
 
-<details id="querysourcetracer">
-<summary><strong>📍 QuerySourceTracer</strong> - CSI: Database (find exact file:line in your code)</summary>
+#### **📍 QuerySourceTracer** - CSI: Database (find exact file:line in your code)
 
-#### **What it does:**
+**What it does:**
 Shows you EXACTLY where in your code each query originated.
 
-#### **The Problem:**
+**The Problem:**
 You see a slow query: `SELECT * FROM users WHERE email = '...'`
 You have 50 places that query users. Which one is slow? You don't know!
 
-#### **The Solution:**
+**The Solution:**
 Shows: `Query from: src/services/UserService.ts:45:12 in UserService.findByEmail`
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -394,7 +388,7 @@ Shows: `Query from: src/services/UserService.ts:45:12 in UserService.findByEmail
 | `onQueryLogged` | `function` | `undefined` | Callback with source location |
 | `enableLogging` | `boolean` | `false` | Auto-log source location |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { QuerySourceTracerPlugin } from 'typeorm-query-hooks/plugins/query-source-tracer';
@@ -413,25 +407,24 @@ registerPlugin(QuerySourceTracerPlugin({
 //   SQL: SELECT "user"."id", "user"."email" FROM "users"...
 ```
 
-</details>
 
-<details id="slowqueryanalyzer">
-<summary><strong>🔬 SlowQueryAnalyzer</strong> - Auto-run EXPLAIN on slow queries</summary>
 
-#### **What it does:**
+#### **🔬 SlowQueryAnalyzer** - Auto-run EXPLAIN on slow queries
+
+**What it does:**
 Automatically runs `EXPLAIN` (or `EXPLAIN ANALYZE`) on slow queries to show you WHY they're slow.
 
-#### **The Manual Way (painful):**
+**The Manual Way (painful):**
 1. Slow query alert fires
 2. Copy the SQL
 3. Open pgAdmin/DBeaver
 4. Paste and run `EXPLAIN ANALYZE`
 5. Look for issues
 
-#### **The Automatic Way:**
+**The Automatic Way:**
 Plugin does it all automatically and logs the execution plan immediately!
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -441,7 +434,7 @@ Plugin does it all automatically and logs the execution plan immediately!
 | `onAnalysis` | `function` | `undefined` | Callback with execution plan |
 | `enableLogging` | `boolean` | `false` | Auto-log execution plans |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { SlowQueryAnalyzerPlugin } from 'typeorm-query-hooks/plugins/slow-query-analyzer';
@@ -463,15 +456,14 @@ registerPlugin(SlowQueryAnalyzerPlugin({
 }));
 ```
 
-</details>
 
-<details id="lazyloadingdetector">
-<summary><strong>⚠️ LazyLoadingDetector</strong> - Detect lazy-loaded relations (hidden N+1)</summary>
 
-#### **What it does:**
+#### **⚠️ LazyLoadingDetector** - Detect lazy-loaded relations (hidden N+1)
+
+**What it does:**
 Warns when lazy-loaded relations are accessed (often causes hidden N+1 queries).
 
-#### **The Problem:**
+**The Problem:**
 ```typescript
 @Entity()
 class User {
@@ -486,7 +478,7 @@ for (const user of users) {
 }
 ```
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -496,7 +488,7 @@ for (const user of users) {
 | `onLazyLoadDetected` | `function` | `undefined` | Callback when lazy load detected |
 | `enableLogging` | `boolean` | `false` | Auto-log lazy loading warnings |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { LazyLoadingDetectorPlugin } from 'typeorm-query-hooks/plugins/lazy-loading-detector';
@@ -515,15 +507,14 @@ registerPlugin(LazyLoadingDetectorPlugin({
 //   - Option 2: .leftJoinAndSelect('user.posts', 'posts')
 ```
 
-</details>
 
-<details id="performancemonitor">
-<summary><strong>⚡ PerformanceMonitor</strong> - Track query execution time</summary>
 
-#### **What it does:**
+#### **⚡ PerformanceMonitor** - Track query execution time
+
+**What it does:**
 Monitors query performance and detects slow queries.
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -532,7 +523,7 @@ Monitors query performance and detects slow queries.
 | `onMetric` | `function` | `undefined` | Callback for all query completions |
 | `enableLogging` | `boolean` | `false` | Auto-log performance metrics |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
@@ -549,19 +540,18 @@ registerPlugin(PerformanceMonitorPlugin({
 }));
 ```
 
-</details>
+
 
 ---
 
 ### **🗃️ Data Management**
 
-<details id="cacheinvalidation">
-<summary><strong>🗑️ CacheInvalidation</strong> - Auto-invalidate cache on data changes</summary>
+#### **🗑️ CacheInvalidation** - Auto-invalidate cache on data changes
 
-#### **What it does:**
+**What it does:**
 Automatically invalidates cache when `INSERT`, `UPDATE`, or `DELETE` operations occur.
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -570,7 +560,7 @@ Automatically invalidates cache when `INSERT`, `UPDATE`, or `DELETE` operations 
 | `monitorTables` | `string[]` | `[]` (all) | Specific tables to monitor. Empty = all tables |
 | `enableLogging` | `boolean` | `false` | Auto-log cache invalidations |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { CacheInvalidationPlugin } from 'typeorm-query-hooks/plugins/cache-invalidation';
@@ -586,15 +576,14 @@ registerPlugin(CacheInvalidationPlugin({
 }));
 ```
 
-</details>
 
-<details id="auditlogging">
-<summary><strong>📝 AuditLogging</strong> - Track all database operations (GDPR/HIPAA ready)</summary>
 
-#### **What it does:**
+#### **📝 AuditLogging** - Track all database operations (GDPR/HIPAA ready)
+
+**What it does:**
 Comprehensive audit trail of who did what, when, and on which tables.
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -607,7 +596,7 @@ Comprehensive audit trail of who did what, when, and on which tables.
 | `metadata` | `object\|function` | `undefined` | Additional metadata to include |
 | `enableLogging` | `boolean` | `false` | Auto-log audit entries |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { AuditLoggingPlugin } from 'typeorm-query-hooks/plugins/audit-logging';
@@ -635,15 +624,14 @@ registerPlugin(AuditLoggingPlugin({
 }));
 ```
 
-</details>
 
-<details id="bulkoperations">
-<summary><strong>📊 BulkOperations</strong> - Prevent accidental mass updates/deletes</summary>
 
-#### **What it does:**
+#### **📊 BulkOperations** - Prevent accidental mass updates/deletes
+
+**What it does:**
 Detects operations affecting many rows - prevents accidents like deleting 100,000 records.
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -654,7 +642,7 @@ Detects operations affecting many rows - prevents accidents like deleting 100,00
 | `onBulkOperation` | `function` | `undefined` | Callback when bulk operation detected |
 | `enableLogging` | `boolean` | `false` | Auto-log bulk operations |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { BulkOperationsPlugin } from 'typeorm-query-hooks/plugins/bulk-operations';
@@ -671,15 +659,14 @@ registerPlugin(BulkOperationsPlugin({
 }));
 ```
 
-</details>
 
-<details id="queryresulttransformer">
-<summary><strong>🔄 QueryResultTransformer</strong> - Auto-transform results to DTOs</summary>
 
-#### **What it does:**
+#### **🔄 QueryResultTransformer** - Auto-transform results to DTOs
+
+**What it does:**
 Automatically transforms database results to DTOs, removes sensitive data, adds computed fields.
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -687,7 +674,7 @@ Automatically transforms database results to DTOs, removes sensitive data, adds 
 | `globalTransformer` | `function` | `undefined` | Applied to all results |
 | `enableLogging` | `boolean` | `false` | Auto-log transformations |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { QueryResultTransformerPlugin } from 'typeorm-query-hooks/plugins/query-result-transformer';
@@ -712,26 +699,25 @@ registerPlugin(QueryResultTransformerPlugin({
 }));
 ```
 
-</details>
+
 
 ---
 
 ### **🛠️ Utilities**
 
-<details id="tableextractor">
-<summary><strong>🏷️ TableExtractor</strong> - Extract table names from queries</summary>
+#### **🏷️ TableExtractor** - Extract table names from queries
 
-#### **What it does:**
+**What it does:**
 Extracts all table names from any TypeORM query (SELECT, INSERT, UPDATE, DELETE, CTEs, subqueries, joins).
 
-#### **Configuration:**
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `warnOnEmptyTables` | `boolean` | `false` | Warn when no tables are extracted |
 | `enableLogging` | `boolean` | `false` | Log extracted tables |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { createTableExtractorPlugin, extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
@@ -749,12 +735,11 @@ const tables = extractTablesFromBuilder(query);
 const tables2 = query.getInvolvedTables();
 ```
 
-</details>
 
-<details id="resultvalidator">
-<summary><strong>✅ ResultValidator</strong> - Validate query results</summary>
 
-#### **Configuration:**
+#### **✅ ResultValidator** - Validate query results
+
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -764,7 +749,7 @@ const tables2 = query.getInvolvedTables();
 | `onLargeResult` | `function` | `undefined` | Callback when result exceeds threshold |
 | `enableLogging` | `boolean` | `false` | Auto-log validation warnings |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { ResultValidatorPlugin } from 'typeorm-query-hooks/plugins/result-validator';
@@ -779,12 +764,11 @@ registerPlugin(ResultValidatorPlugin({
 }));
 ```
 
-</details>
 
-<details id="querymodifier">
-<summary><strong>✏️ QueryModifier</strong> - Modify queries before execution</summary>
 
-#### **Configuration:**
+#### **✏️ QueryModifier** - Modify queries before execution
+
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -793,7 +777,7 @@ registerPlugin(ResultValidatorPlugin({
 | `shouldExecute` | `function` | `undefined` | Return false to cancel query |
 | `enableLogging` | `boolean` | `false` | Auto-log modifications |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { QueryModifierPlugin, TenantFilterModifier, SafetyModifier } from 'typeorm-query-hooks/plugins/query-modifier';
@@ -817,12 +801,11 @@ registerPlugin(QueryModifierPlugin({
 }));
 ```
 
-</details>
 
-<details id="querycomplexity">
-<summary><strong>🔍 QueryComplexity</strong> - Warn on complex queries</summary>
 
-#### **Configuration:**
+#### **🔍 QueryComplexity** - Warn on complex queries
+
+**Configuration:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -833,7 +816,7 @@ registerPlugin(QueryModifierPlugin({
 | `onComplexQuery` | `function` | `undefined` | Callback when complex query detected |
 | `enableLogging` | `boolean` | `false` | Auto-log complexity warnings |
 
-#### **Usage:**
+**Usage:**
 
 ```typescript
 import { QueryComplexityPlugin } from 'typeorm-query-hooks/plugins/query-complexity';
@@ -846,21 +829,19 @@ registerPlugin(QueryComplexityPlugin({
 }));
 ```
 
-</details>
 
-<details id="querylogger">
-<summary><strong>🪵 QueryLogger</strong> - Custom query logging with filters</summary>
+
+#### **🪵 QueryLogger** - Custom query logging with filters
 
 See plugin documentation for details.
 
-</details>
 
-<details id="querymetadataregistry">
-<summary><strong>💾 QueryMetadataRegistry</strong> - Store query metadata</summary>
+
+#### **💾 QueryMetadataRegistry** - Store query metadata
 
 Automatically registered when using NestJS integration. See NestJS section below.
 
-</details>
+
 
 ---
 
