@@ -1,6 +1,6 @@
 # 🚀 TypeORM Query Hooks
 
-> **Powerful plugin-based hooks for TypeORM** - Monitor performance, validate results, modify queries, track transactions & extract table metadata. Works seamlessly with **JavaScript**, **TypeScript**, and **NestJS**.
+> **The ultimate TypeORM companion** - 20 powerful plugins to prevent N+1 queries, detect connection leaks, block dangerous operations, auto-run EXPLAIN, trace query sources & more. Works seamlessly with **JavaScript**, **TypeScript**, and **NestJS**.
 
 [![npm version](https://badge.fury.io/js/typeorm-query-hooks.svg)](https://www.npmjs.com/package/typeorm-query-hooks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,128 +8,23 @@
 
 ---
 
-## ✨ Features
+## ✨ Why Use This Library?
 
-### 🎯 **Core Capabilities**
+### **Prevents Production Disasters:**
+- 🕵️ **N+1 Query Detection** - Catches the #1 performance killer automatically
+- 🛡️ **Safety Guards** - Blocks `DELETE`/`UPDATE` without `WHERE`, prevents DDL in production
+- 💧 **Connection Leak Detection** - Finds leaks before they crash your app
+- 🧟 **Zombie Transaction Monitoring** - Prevents deadlocks from idle transactions
 
-- **🔍 Table Extraction** - Automatically extract all tables from any TypeORM query (SELECT, INSERT, UPDATE, DELETE, CTEs, subqueries)
-- **⚡ Performance Monitoring** - Track query execution time, detect slow queries, identify bottlenecks
-- **✅ Result Validation** - Monitor empty results, detect large result sets, validate query outcomes
-- **✏️ Query Modification** - Modify SQL and parameters before execution (multi-tenancy, query hints, safety checks)
-- **🔄 Transaction Tracking** - Monitor transaction lifecycle (start, commit, rollback)
-- **🎣 Extensible Hooks** - Create custom plugins for your specific needs
-- **🪵 Enhanced Logging** - Rich query metadata for better debugging and observability
+### **Automatic Debugging:**
+- 📍 **Source Code Tracing** - Shows exact file:line where queries originate (no more guessing!)
+- 🔬 **Auto-EXPLAIN** - Runs query plan analysis on slow queries automatically
+- ⚠️ **Lazy Loading Detection** - Catches hidden N+1 problems
 
-### 🏗️ **Built-in Plugins** (20 Total!)
-
-#### **🔥 Critical Performance & Safety**
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| **🕵️ NPlusOneDetector** | Detect N+1 query problems | #1 performance killer - catches 80% of issues |
-| **🛡️ SafetyGuard** | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL |
-| **💧 ConnectionLeakDetector** | Find connection leaks | Prevents pool exhaustion and app crashes |
-| **⏱️ QueryTimeout** | Automatic query timeouts | Prevents queries from hanging forever |
-| **🧟 IdleTransactionMonitor** | Detect zombie transactions | Prevents deadlocks from idle transactions |
-
-#### **🔬 Analysis & Debugging**
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| **📍 QuerySourceTracer** | Show where queries originate | CSI: Database - find exact file:line in your code |
-| **🔬 SlowQueryAnalyzer** | Auto-run EXPLAIN on slow queries | Automatic query plan analysis |
-| **⚠️ LazyLoadingDetector** | Detect lazy-loaded relations | Catches hidden N+1 problems |
-| **⚡ PerformanceMonitor** | Track query execution time | Monitor and optimize performance |
-
-#### **🗃️ Data Management**
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| **🗑️ CacheInvalidation** | Auto-invalidate cache on writes | Maintain cache consistency |
-| **📝 AuditLogging** | Track all database operations | Compliance (GDPR, HIPAA), security |
-| **📊 BulkOperations** | Detect bulk operations | Prevent accidental mass updates |
-| **🔄 QueryResultTransformer** | Transform query results | Auto-convert to DTOs, remove sensitive data |
-
-#### **🛠️ Utilities**
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| **🏷️ TableExtractor** | Extract table names from queries | Logging, caching, access control |
-| **✅ ResultValidator** | Validate query results | Alert on empty results, pagination issues |
-| **✏️ QueryModifier** | Modify queries before execution | Multi-tenancy, query hints, safety |
-| **🔍 QueryComplexity** | Warn on complex queries | Identify queries needing optimization |
-| **💾 QueryMetadataRegistry** | Store query metadata | Analytics, cross-cutting concerns |
-| **🪵 QueryLogger** | Custom query logging | Flexible logging with filters |
-
-### ⚙️ **Default Configuration Values**
-
-| Option | Plugin | Default | Description |
-|--------|--------|---------|-------------|
-| **Core Options** ||||
-| `verbose` | Core | `false` | Enable debug logging for the core hook system |
-| **Performance Monitor** ||||
-| `slowQueryThreshold` | PerformanceMonitor | `500` ms | Threshold for slow query detection |
-| **Result Validator** ||||
-| `largeResultThreshold` | ResultValidator | `1000` rows | Threshold for large result set detection |
-| `monitorTables` | ResultValidator | `[]` (all) | Tables to monitor. Empty array = all tables |
-| **Table Extractor** ||||
-| `warnOnEmptyTables` | TableExtractor | `false` | Warn when no tables are extracted |
-| **Cache Invalidation** ||||
-| `invalidateOnTypes` | CacheInvalidation | `['INSERT','UPDATE','DELETE']` | Query types that trigger cache invalidation |
-| `monitorTables` | CacheInvalidation | `[]` (all) | Tables to invalidate cache for. Empty = all |
-| **Audit Logging** ||||
-| `auditTypes` | AuditLogging | `['INSERT','UPDATE','DELETE']` | Query types to audit (only writes by default) |
-| `auditTables` | AuditLogging | `[]` (all) | Tables to audit. Empty = all tables |
-| `includeSql` | AuditLogging | `true` | Include SQL query in audit logs |
-| `includeParameters` | AuditLogging | `false` | Include query parameters in audit logs |
-| **Bulk Operations** ||||
-| `bulkThreshold` | BulkOperations | `100` rows | Threshold for considering operation "bulk" |
-| `monitorTypes` | BulkOperations | `['INSERT','UPDATE','DELETE']` | Query types to monitor for bulk operations |
-| `warnOnBulk` | BulkOperations | `true` | Warn when bulk operation is detected |
-| **Query Complexity** ||||
-| `maxJoins` | QueryComplexity | `5` | Maximum joins before warning |
-| `maxTables` | QueryComplexity | `10` | Maximum tables before warning |
-| `warnOnSubqueries` | QueryComplexity | `false` | Warn on subqueries |
-| `warnOnCTEs` | QueryComplexity | `false` | Warn on Common Table Expressions |
-| **All Plugins** ||||
-| `enableLogging` | All plugins | `false` | Enable console logging for the plugin |
-
-**💡 What does `enableLogging` mean?**
-- When `true`: Plugin outputs console.log/warn/error messages automatically
-- When `false`: Plugin is silent unless you provide custom callbacks (recommended for production)
-- Example: `PerformanceMonitor` with `enableLogging: true` will automatically console.warn slow queries
-
-**💡 What does `monitorTables` mean?**
-- Empty array `[]`: Monitor ALL tables (default for most plugins)
-- Specific tables `['users', 'orders']`: Only monitor these specific tables
-- Use specific tables to reduce overhead and focus on critical data
-
-### 🎭 **Hook Types**
-
-```typescript
-// Query Build Hooks
-onQueryBuild(context)         // When query is built
-onBeforeQuery(context)        // Before execution (can modify SQL)
-
-// Execution Hooks
-onQueryStart(context)         // Execution starts
-onQueryComplete(context)      // Execution completes
-onQueryError(context)         // Execution fails
-onSlowQuery(context)          // Slow query detected
-
-// Result Hooks
-onQueryResult(context)        // Result received
-onEmptyResult(context)        // No results returned
-onLargeResult(context)        // Large result set detected
-
-// Transaction Hooks
-onTransactionStart(context)   // Transaction begins
-onTransactionCommit(context)  // Transaction commits
-onTransactionRollback(context) // Transaction rolls back
-onTransactionEnd(context)     // Transaction ends
-
-// Connection Pool Hooks
-onConnectionAcquired(context) // Connection acquired
-onConnectionReleased(context) // Connection released
-onConnectionPoolFull(context) // Pool exhausted
-onConnectionError(context)    // Connection error
-```
+### **Enterprise Features:**
+- 📝 **Audit Logging** - GDPR/HIPAA compliance ready
+- 🗑️ **Cache Invalidation** - Auto-invalidate on data changes
+- 🔄 **Result Transformation** - Auto-convert to DTOs, remove sensitive data
 
 ---
 
@@ -143,126 +38,498 @@ yarn add typeorm-query-hooks
 
 ---
 
-## 🚀 Quick Start
+## ⚡ Quick Start
 
-### **JavaScript / TypeScript**
+### **1. Enable Hooks**
 
 ```typescript
-import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
+import { enableQueryHooks } from 'typeorm-query-hooks';
 
-// Enable hooks at application startup
-enableQueryHooks({
-  verbose: false  // Enable debug logging (default: false)
+// Enable at application startup (before any TypeORM queries)
+enableQueryHooks({ 
+  verbose: false  // Set to true for debugging
 });
-
-// Register performance monitoring plugin with its own configuration
-registerPlugin(PerformanceMonitorPlugin({
-  slowQueryThreshold: 500,  // Plugin-specific threshold
-  enableLogging: true,
-  onSlowQuery: (context) => {
-    console.warn(`🐌 Slow query: ${context.executionTime}ms`, {
-      sql: context.sql.substring(0, 200),
-      method: context.methodName
-    });
-    
-    // Send to your monitoring service
-    // datadog.increment('slow_queries');
-    // newrelic.recordMetric('query_time', context.executionTime);
-  }
-}));
-
-// That's it! Now all your TypeORM queries are monitored
 ```
 
-### **NestJS Integration**
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `verbose` | `boolean` | `false` | Enable detailed debug logging for the core hook system. Shows when hooks fire, plugins execute, queries are captured, etc. |
+
+**When to use `verbose: true`:**
+- Debugging why a plugin isn't working
+- Understanding the hook execution flow
+- Development/testing only (too noisy for production)
+
+---
+
+### **2. Register Plugins**
 
 ```typescript
-// app.module.ts or main.ts
-import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { createTableExtractorPlugin } from 'typeorm-query-hooks/plugins/table-extractor';
-import { QueryMetadataRegistryPlugin } from 'typeorm-query-hooks/plugins/query-metadata-registry';
-import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
+import { registerPlugin } from 'typeorm-query-hooks';
+import { NPlusOneDetectorPlugin } from 'typeorm-query-hooks/plugins/n-plus-one-detector';
 
-// Initialize hooks before TypeORM connection
-enableQueryHooks({ verbose: true });
-
-// Register plugins with their own configurations
-registerPlugin(createTableExtractorPlugin({
-  warnOnEmptyTables: true,
-  enableLogging: false
-}));
-registerPlugin(QueryMetadataRegistryPlugin);
-registerPlugin(PerformanceMonitorPlugin({
-  slowQueryThreshold: 500,
+// Register any plugins you need
+registerPlugin(NPlusOneDetectorPlugin({
+  threshold: 5,
   enableLogging: true
 }));
-
-@Module({
-  imports: [
-    TypeOrmModule.forRoot({
-      // ... your TypeORM config
-    }),
-  ],
-})
-export class AppModule {}
-```
-
-**Custom Logger with Table Extraction:**
-
-```typescript
-import { Logger } from 'typeorm';
-import { getTablesFromSQL } from 'typeorm-query-hooks';
-
-export class MyCustomLogger implements Logger {
-  logQuery(query: string, parameters?: any[]) {
-    // Extract tables automatically!
-    const tables = getTablesFromSQL(query);
-    
-    console.log('Query executed:', {
-      sql: query.substring(0, 200),
-      tables,
-      parameters
-    });
-  }
-
-  logQueryError(error: string, query: string, parameters?: any[]) {
-    const tables = getTablesFromSQL(query);
-    console.error('Query failed:', { error, tables });
-  }
-
-  logQuerySlow(time: number, query: string, parameters?: any[]) {
-    const tables = getTablesFromSQL(query);
-    console.warn(`Slow query (${time}ms):`, { tables });
-  }
-
-  logSchemaBuild(message: string) {
-    console.log(message);
-  }
-
-  logMigration(message: string) {
-    console.log(message);
-  }
-
-  log(level: 'log' | 'info' | 'warn', message: any) {
-    console.log(`[${level}] ${message}`);
-  }
-}
 ```
 
 ---
 
-## 🚀 Featured Plugins
+## 🏗️ Built-in Plugins (20 Total!)
 
-### **1. Cache Invalidation Plugin**
+### **🔥 Critical Performance & Safety**
 
-Automatically invalidate your cache when data changes. Essential for maintaining cache consistency.
+<details>
+<summary><strong>🕵️ NPlusOneDetector</strong> - Detect N+1 query problems (THE #1 performance killer)</summary>
+
+#### **What it does:**
+Detects when the same query runs repeatedly in a short time window - the classic N+1 problem.
+
+#### **The Problem:**
+```typescript
+// ❌ BAD - Causes N+1 problem
+const users = await userRepository.find();  // 1 query
+for (const user of users) {  // Loop
+  const posts = await postRepository.find({ where: { userId: user.id } });  // N queries!
+}
+// Total: 101 queries for 100 users!
+```
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `threshold` | `number` | `5` | Maximum number of identical queries allowed within time window |
+| `window` | `number` | `100` | Time window in milliseconds to track query patterns |
+| `includeStackTrace` | `boolean` | `true` | Capture stack trace to show where N+1 originated |
+| `ignorePatterns` | `RegExp[]` | `[]` | Regex patterns to ignore (e.g., `/migrations$/i`) |
+| `onNPlusOneDetected` | `function` | `undefined` | Callback when N+1 is detected |
+| `enableLogging` | `boolean` | `false` | Auto-log N+1 warnings to console |
+
+#### **Usage:**
+
+```typescript
+import { NPlusOneDetectorPlugin } from 'typeorm-query-hooks/plugins/n-plus-one-detector';
+
+registerPlugin(NPlusOneDetectorPlugin({
+  threshold: 5,        // Flag if same query runs > 5 times
+  window: 100,         // Within 100ms window
+  includeStackTrace: true,
+  enableLogging: true,
+  onNPlusOneDetected: (context, count, fingerprint) => {
+    logger.error(`🚨 N+1 DETECTED! Query ran ${count} times`, {
+      fingerprint: fingerprint.substring(0, 100),
+      suggestion: 'Use .leftJoinAndSelect() or relations: []'
+    });
+    
+    // Send to monitoring
+    datadog.increment('n_plus_one_detected', { count });
+  }
+}));
+```
+
+</details>
+
+<details>
+<summary><strong>🛡️ SafetyGuard</strong> - Block dangerous database operations</summary>
+
+#### **What it does:**
+Prevents catastrophic mistakes like `UPDATE users SET role='admin'` (no WHERE = ALL users become admin!)
+
+#### **Real disasters this prevents:**
+- Junior dev ran `UPDATE users SET email='test@test.com'` without WHERE → 1M users had same email
+- Migration with `DROP TABLE` ran in production
+- `DELETE FROM orders` without WHERE → Lost 6 months of data
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `blockDDL` | `boolean` | `false` | Block CREATE, ALTER, DROP, TRUNCATE operations |
+| `requireWhereClause` | `boolean` | `true` | Require WHERE clause for UPDATE/DELETE ⚠️ CRITICAL |
+| `blockTruncate` | `boolean` | `true` | Block TRUNCATE operations |
+| `blockDrop` | `boolean` | `true` | Block DROP TABLE/DATABASE operations |
+| `allowedEnvironments` | `string[]` | `['development','test']` | Environments where destructive ops are allowed |
+| `protectedTables` | `string[]` | `[]` | Tables with extra protection (e.g., `['users', 'payments']`) |
+| `allowForce` | `boolean` | `false` | Allow `/* FORCE_ALLOW */` comment to bypass |
+| `throwOnBlock` | `boolean` | `true` | Throw error when operation is blocked |
+| `onBlocked` | `function` | `undefined` | Callback when operation is blocked |
+| `enableLogging` | `boolean` | `false` | Auto-log blocked operations |
+
+#### **Usage:**
+
+```typescript
+import { SafetyGuardPlugin } from 'typeorm-query-hooks/plugins/safety-guard';
+
+// Recommended for production
+registerPlugin(SafetyGuardPlugin({
+  blockDDL: process.env.NODE_ENV === 'production',
+  requireWhereClause: true,  // ALWAYS require WHERE
+  protectedTables: ['users', 'payments', 'transactions'],
+  throwOnBlock: true,
+  onBlocked: (context, blocked) => {
+    // Send critical alert
+    pagerduty.trigger({
+      severity: 'critical',
+      summary: `Dangerous operation blocked: ${blocked.operation}`,
+      tables: blocked.tables
+    });
+  },
+  enableLogging: true
+}));
+```
+
+</details>
+
+<details>
+<summary><strong>💧 ConnectionLeakDetector</strong> - Find connection leaks before they crash your app</summary>
+
+#### **What it does:**
+Detects connections that are acquired but never released - leads to pool exhaustion.
+
+#### **The Problem:**
+```typescript
+const queryRunner = dataSource.createQueryRunner();
+await queryRunner.connect();
+await queryRunner.query('SELECT ...');
+// ❌ FORGOT queryRunner.release() - connection leaked!
+```
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `maxConnectionAge` | `number` | `30000` | Max connection age in ms before considered a leak |
+| `warnThreshold` | `number` | `0.8` | Warn when pool usage exceeds this % (0.8 = 80%) |
+| `captureStackTrace` | `boolean` | `true` | Capture where connection was acquired |
+| `onLeak` | `function` | `undefined` | Callback when leak is detected |
+| `onPoolWarning` | `function` | `undefined` | Callback when pool capacity warning |
+| `enableLogging` | `boolean` | `false` | Auto-log leak warnings |
+
+#### **Usage:**
+
+```typescript
+import { ConnectionLeakDetectorPlugin } from 'typeorm-query-hooks/plugins/connection-leak-detector';
+
+registerPlugin(ConnectionLeakDetectorPlugin({
+  maxConnectionAge: 30000,  // 30 seconds
+  warnThreshold: 0.8,       // Warn at 80% pool capacity
+  captureStackTrace: true,
+  enableLogging: true,
+  onLeak: (leak) => {
+    logger.error('💧 CONNECTION LEAK:', {
+      age: `${leak.age}ms`,
+      stackTrace: leak.stackTrace
+    });
+    monitoring.alert({ type: 'connection_leak', severity: 'critical' });
+  }
+}));
+```
+
+</details>
+
+<details>
+<summary><strong>⏱️ QueryTimeout</strong> - Automatic query timeouts</summary>
+
+#### **What it does:**
+Prevents queries from hanging forever and blocking the connection pool.
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `defaultTimeout` | `number` | `5000` | Default timeout for all queries (ms) |
+| `timeoutByType` | `Record<string, number>` | `{}` | Override timeout by query type (e.g., `{ 'SELECT': 3000 }`) |
+| `timeoutByTablePattern` | `Record<string, number>` | `{}` | Override by table pattern (e.g., `{ 'report_.*': 30000 }`) |
+| `throwOnTimeout` | `boolean` | `true` | Throw error on timeout |
+| `onTimeout` | `function` | `undefined` | Callback when timeout occurs |
+| `enableLogging` | `boolean` | `false` | Auto-log timeouts |
+
+#### **Usage:**
+
+```typescript
+import { QueryTimeoutPlugin } from 'typeorm-query-hooks/plugins/query-timeout';
+
+registerPlugin(QueryTimeoutPlugin({
+  defaultTimeout: 5000,
+  timeoutByType: {
+    'SELECT': 3000,   // Reads should be fast
+    'INSERT': 10000,  // Writes can be slower
+    'UPDATE': 10000
+  },
+  timeoutByTablePattern: {
+    'report_.*': 30000,    // Reports can take 30s
+    'analytics_.*': 60000  // Analytics 60s
+  },
+  throwOnTimeout: true,
+  enableLogging: true
+}));
+```
+
+</details>
+
+<details>
+<summary><strong>🧟 IdleTransactionMonitor</strong> - Detect zombie transactions</summary>
+
+#### **What it does:**
+Detects transactions that sit idle (no queries running) - causes deadlocks.
+
+#### **The Problem:**
+```typescript
+await queryRunner.startTransaction();
+await queryRunner.manager.save(user);
+
+// ❌ Transaction is OPEN while doing HTTP call!
+await fetch('https://api.slow-service.com');  // 5 seconds
+
+// Meanwhile: DB locks held, other queries waiting, deadlock risk
+await queryRunner.commitTransaction();
+```
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `maxTransactionDuration` | `number` | `5000` | Max transaction duration in ms |
+| `maxIdleTime` | `number` | `1000` | Max idle time (no queries) in ms |
+| `autoRollback` | `boolean` | `false` | Auto-rollback zombie transactions ⚠️ Use carefully |
+| `onZombieDetected` | `function` | `undefined` | Callback when zombie detected |
+| `enableLogging` | `boolean` | `false` | Auto-log zombie warnings |
+
+#### **Usage:**
+
+```typescript
+import { IdleTransactionMonitorPlugin } from 'typeorm-query-hooks/plugins/idle-transaction-monitor';
+
+registerPlugin(IdleTransactionMonitorPlugin({
+  maxTransactionDuration: 5000,
+  maxIdleTime: 1000,
+  autoRollback: false,  // Don't auto-rollback in production
+  enableLogging: true,
+  onZombieDetected: (context, zombie) => {
+    logger.error('🧟 ZOMBIE TRANSACTION:', {
+      duration: `${zombie.duration}ms`,
+      idleTime: `${zombie.idleTime}ms`,
+      queries: zombie.queriesExecuted
+    });
+  }
+}));
+```
+
+</details>
+
+---
+
+### **🔬 Analysis & Debugging**
+
+<details>
+<summary><strong>📍 QuerySourceTracer</strong> - CSI: Database (find exact file:line in your code)</summary>
+
+#### **What it does:**
+Shows you EXACTLY where in your code each query originated.
+
+#### **The Problem:**
+You see a slow query: `SELECT * FROM users WHERE email = '...'`
+You have 50 places that query users. Which one is slow? You don't know!
+
+#### **The Solution:**
+Shows: `Query from: src/services/UserService.ts:45:12 in UserService.findByEmail`
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `basePath` | `string` | `process.cwd()` | Base path to filter stack traces |
+| `attachToQueryContext` | `boolean` | `true` | Make source location available to other plugins |
+| `includeFullStackTrace` | `boolean` | `false` | Include complete stack trace |
+| `ignorePaths` | `string[]` | `['node_modules']` | Paths to ignore in stack traces |
+| `onQueryLogged` | `function` | `undefined` | Callback with source location |
+| `enableLogging` | `boolean` | `false` | Auto-log source location |
+
+#### **Usage:**
+
+```typescript
+import { QuerySourceTracerPlugin } from 'typeorm-query-hooks/plugins/query-source-tracer';
+
+registerPlugin(QuerySourceTracerPlugin({
+  basePath: process.cwd() + '/src',
+  attachToQueryContext: true,  // Other plugins can use context.sourceLocation
+  enableLogging: true
+}));
+
+// Logs show:
+// [QuerySourceTracer] 📍 Query Source:
+//   File: src/services/UserService.ts
+//   Line: 45:12
+//   Function: UserService.findByEmail
+//   SQL: SELECT "user"."id", "user"."email" FROM "users"...
+```
+
+</details>
+
+<details>
+<summary><strong>🔬 SlowQueryAnalyzer</strong> - Auto-run EXPLAIN on slow queries</summary>
+
+#### **What it does:**
+Automatically runs `EXPLAIN` (or `EXPLAIN ANALYZE`) on slow queries to show you WHY they're slow.
+
+#### **The Manual Way (painful):**
+1. Slow query alert fires
+2. Copy the SQL
+3. Open pgAdmin/DBeaver
+4. Paste and run `EXPLAIN ANALYZE`
+5. Look for issues
+
+#### **The Automatic Way:**
+Plugin does it all automatically and logs the execution plan immediately!
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `threshold` | `number` | `1000` | Run EXPLAIN on queries slower than this (ms) |
+| `runAnalyze` | `boolean` | `false` | Run EXPLAIN ANALYZE (actually executes query) ⚠️ |
+| `databaseType` | `string` | `'postgres'` | Database type: `'postgres'`, `'mysql'`, `'mariadb'`, `'sqlite'`, `'mssql'` |
+| `onAnalysis` | `function` | `undefined` | Callback with execution plan |
+| `enableLogging` | `boolean` | `false` | Auto-log execution plans |
+
+#### **Usage:**
+
+```typescript
+import { SlowQueryAnalyzerPlugin } from 'typeorm-query-hooks/plugins/slow-query-analyzer';
+
+registerPlugin(SlowQueryAnalyzerPlugin({
+  threshold: 1000,
+  databaseType: 'postgres',
+  enableLogging: true,
+  onAnalysis: (context, plan) => {
+    if (plan.hasSeqScan) {
+      logger.error('🔍 MISSING INDEX DETECTED:', {
+        sql: context.sql.substring(0, 200),
+        executionTime: context.executionTime,
+        plan: plan.raw,
+        suggestion: 'Add an index to improve performance'
+      });
+    }
+  }
+}));
+```
+
+</details>
+
+<details>
+<summary><strong>⚠️ LazyLoadingDetector</strong> - Detect lazy-loaded relations (hidden N+1)</summary>
+
+#### **What it does:**
+Warns when lazy-loaded relations are accessed (often causes hidden N+1 queries).
+
+#### **The Problem:**
+```typescript
+@Entity()
+class User {
+  @OneToMany(() => Post, post => post.user)
+  posts: Promise<Post[]>;  // Lazy loaded!
+}
+
+// Usage - looks innocent but causes N+1
+const users = await userRepo.find();
+for (const user of users) {
+  const posts = await user.posts;  // Separate query per user!
+}
+```
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `warnOnLazyLoad` | `boolean` | `true` | Warn when lazy loading is detected |
+| `suggestEagerLoading` | `boolean` | `true` | Show code suggestion to fix |
+| `threshold` | `number` | `1` | Warn after N lazy loads of same relation |
+| `onLazyLoadDetected` | `function` | `undefined` | Callback when lazy load detected |
+| `enableLogging` | `boolean` | `false` | Auto-log lazy loading warnings |
+
+#### **Usage:**
+
+```typescript
+import { LazyLoadingDetectorPlugin } from 'typeorm-query-hooks/plugins/lazy-loading-detector';
+
+registerPlugin(LazyLoadingDetectorPlugin({
+  warnOnLazyLoad: true,
+  suggestEagerLoading: true,
+  threshold: 3,
+  enableLogging: true
+}));
+
+// Shows suggestions like:
+// ⚠️ Potential lazy loading detected
+// 💡 Suggestion: Use eager loading:
+//   - Option 1: find({ relations: ['posts'] })
+//   - Option 2: .leftJoinAndSelect('user.posts', 'posts')
+```
+
+</details>
+
+<details>
+<summary><strong>⚡ PerformanceMonitor</strong> - Track query execution time</summary>
+
+#### **What it does:**
+Monitors query performance and detects slow queries.
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `slowQueryThreshold` | `number` | `500` | Threshold in ms for slow query detection |
+| `onSlowQuery` | `function` | `undefined` | Callback when slow query detected |
+| `onMetric` | `function` | `undefined` | Callback for all query completions |
+| `enableLogging` | `boolean` | `false` | Auto-log performance metrics |
+
+#### **Usage:**
+
+```typescript
+import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
+
+registerPlugin(PerformanceMonitorPlugin({
+  slowQueryThreshold: 300,
+  enableLogging: true,
+  onSlowQuery: (context) => {
+    datadog.histogram('db.query.duration', context.executionTime);
+  },
+  onMetric: (context) => {
+    prometheus.histogram('query_duration', context.executionTime);
+  }
+}));
+```
+
+</details>
+
+---
+
+### **🗃️ Data Management**
+
+<details>
+<summary><strong>🗑️ CacheInvalidation</strong> - Auto-invalidate cache on data changes</summary>
+
+#### **What it does:**
+Automatically invalidates cache when `INSERT`, `UPDATE`, or `DELETE` operations occur.
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `onInvalidate` | `function` | **REQUIRED** | Callback to clear your cache (Redis, memory, etc.) |
+| `invalidateOnTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types that trigger invalidation |
+| `monitorTables` | `string[]` | `[]` (all) | Specific tables to monitor. Empty = all tables |
+| `enableLogging` | `boolean` | `false` | Auto-log cache invalidations |
+
+#### **Usage:**
 
 ```typescript
 import { CacheInvalidationPlugin } from 'typeorm-query-hooks/plugins/cache-invalidation';
-import Redis from 'ioredis';
-
-const redis = new Redis();
 
 registerPlugin(CacheInvalidationPlugin({
   onInvalidate: async (tables) => {
@@ -270,15 +537,33 @@ registerPlugin(CacheInvalidationPlugin({
       await redis.del(`cache:${table}:*`);
     }
   },
-  monitorTables: ['users', 'products'], // Only these tables (default: all)
-  invalidateOnTypes: ['INSERT', 'UPDATE', 'DELETE'], // (default)
+  monitorTables: ['users', 'products'],  // Only these tables
   enableLogging: true
 }));
 ```
 
-### **2. Audit Logging Plugin**
+</details>
 
-Track all database operations for compliance, security, and forensics.
+<details>
+<summary><strong>📝 AuditLogging</strong> - Track all database operations (GDPR/HIPAA ready)</summary>
+
+#### **What it does:**
+Comprehensive audit trail of who did what, when, and on which tables.
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `onAudit` | `function` | **REQUIRED** | Callback to persist audit logs |
+| `getUserId` | `function` | `undefined` | Function to get current user ID |
+| `auditTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types to audit |
+| `auditTables` | `string[]` | `[]` (all) | Tables to audit. Empty = all |
+| `includeSql` | `boolean` | `true` | Include SQL in audit logs |
+| `includeParameters` | `boolean` | `false` | Include parameters (may contain sensitive data) |
+| `metadata` | `object\|function` | `undefined` | Additional metadata to include |
+| `enableLogging` | `boolean` | `false` | Auto-log audit entries |
+
+#### **Usage:**
 
 ```typescript
 import { AuditLoggingPlugin } from 'typeorm-query-hooks/plugins/audit-logging';
@@ -294,24 +579,46 @@ registerPlugin(AuditLoggingPlugin({
       success: entry.success
     });
   },
-  auditTypes: ['INSERT', 'UPDATE', 'DELETE'], // Only writes (default)
-  auditTables: [], // All tables (default)
-  includeSql: true, // (default)
-  includeParameters: false, // Don't log sensitive data (default)
+  auditTypes: ['INSERT', 'UPDATE', 'DELETE'],
+  auditTables: ['users', 'financial_records'],  // Sensitive tables only
+  includeSql: true,
+  includeParameters: false,  // Don't log sensitive data
+  metadata: () => ({ 
+    environment: process.env.NODE_ENV,
+    requestId: getRequestId() 
+  }),
   enableLogging: true
 }));
 ```
 
-### **3. Bulk Operations Plugin**
+</details>
 
-Prevent accidental mass updates or deletes.
+<details>
+<summary><strong>📊 BulkOperations</strong> - Prevent accidental mass updates/deletes</summary>
+
+#### **What it does:**
+Detects operations affecting many rows - prevents accidents like deleting 100,000 records.
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `bulkThreshold` | `number` | `100` | Threshold for considering operation "bulk" (rows) |
+| `monitorTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types to monitor |
+| `monitorTables` | `string[]` | `[]` (all) | Tables to monitor. Empty = all |
+| `warnOnBulk` | `boolean` | `true` | Warn when bulk operation detected |
+| `onBulkOperation` | `function` | `undefined` | Callback when bulk operation detected |
+| `enableLogging` | `boolean` | `false` | Auto-log bulk operations |
+
+#### **Usage:**
 
 ```typescript
 import { BulkOperationsPlugin } from 'typeorm-query-hooks/plugins/bulk-operations';
 
 registerPlugin(BulkOperationsPlugin({
-  bulkThreshold: 100, // Warn if > 100 rows affected (default)
-  warnOnBulk: true, // (default)
+  bulkThreshold: 50,
+  warnOnBulk: true,
+  enableLogging: true,
   onBulkOperation: (context, affectedRows) => {
     if (process.env.NODE_ENV === 'production') {
       throw new Error(`Bulk operation blocked: ${affectedRows} rows`);
@@ -320,422 +627,209 @@ registerPlugin(BulkOperationsPlugin({
 }));
 ```
 
----
+</details>
 
-## 📚 Usage Examples
+<details>
+<summary><strong>🔄 QueryResultTransformer</strong> - Auto-transform results to DTOs</summary>
 
-### 1. **Performance Monitoring**
+#### **What it does:**
+Automatically transforms database results to DTOs, removes sensitive data, adds computed fields.
 
-Detect slow queries and send alerts to your monitoring service.
+#### **Configuration:**
 
-```typescript
-import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { PerformanceMonitorPlugin } from 'typeorm-query-hooks/plugins/performance-monitor';
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `transformers` | `Record<string, Function>` | `{}` | Transformers by entity name |
+| `globalTransformer` | `function` | `undefined` | Applied to all results |
+| `enableLogging` | `boolean` | `false` | Auto-log transformations |
 
-enableQueryHooks();
-
-registerPlugin(PerformanceMonitorPlugin({
-  slowQueryThreshold: 500,  // Plugin-specific threshold
-  enableLogging: true,
-  onSlowQuery: (context) => {
-    // Send to DataDog
-    datadog.histogram('database.query.duration', context.executionTime, {
-      tags: [`method:${context.methodName}`, `type:${context.queryType}`]
-    });
-    
-    // Send to Sentry
-    Sentry.captureMessage(`Slow query: ${context.executionTime}ms`, {
-      level: 'warning',
-      extra: {
-        sql: context.sql,
-        executionTime: context.executionTime
-      }
-    });
-  },
-  onMetric: (context) => {
-    // Track all query metrics
-    prometheus.histogram('query_duration_ms', context.executionTime);
-  }
-}));
-```
-
-### 2. **Result Validation**
-
-Alert when critical queries return empty results or large datasets.
+#### **Usage:**
 
 ```typescript
-import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { ResultValidatorPlugin } from 'typeorm-query-hooks/plugins/result-validator';
+import { QueryResultTransformerPlugin } from 'typeorm-query-hooks/plugins/query-result-transformer';
 
-enableQueryHooks();
-
-registerPlugin(ResultValidatorPlugin({
-  largeResultThreshold: 1000,  // Plugin-specific threshold
-  monitorTables: ['users', 'orders', 'products'], // Only monitor these tables
-  enableLogging: true,
-  onEmptyResult: (context) => {
-    // Alert if critical queries return nothing (potential bug)
-    logger.warn('Empty result detected', {
-      sql: context.sql,
-      method: context.methodName
-    });
-  },
-  onLargeResult: (context) => {
-    // Alert on large result sets (pagination recommended)
-    logger.warn(`Large result: ${context.rowCount} rows`, {
-      sql: context.sql.substring(0, 150),
-      suggestion: 'Consider adding .take() and .skip() for pagination'
-    });
-  }
-}));
-```
-
-### 3. **Query Modification**
-
-Modify SQL before execution for multi-tenancy, query hints, or safety checks.
-
-```typescript
-import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { 
-  QueryModifierPlugin, 
-  TenantFilterModifier, 
-  SafetyModifier 
-} from 'typeorm-query-hooks/plugins/query-modifier';
-
-enableQueryHooks();
-
-// Example 1: Multi-tenancy (automatically inject tenant filters)
-registerPlugin(TenantFilterModifier({
-  getTenantId: () => getCurrentUser().tenantId,
-  tables: ['orders', 'products', 'customers'],
-  tenantColumn: 'tenant_id'
-}));
-
-// Example 2: Add query hints for optimization
-registerPlugin(QueryModifierPlugin({
-  modifySql: (context) => {
-    if (context.sql.includes('FROM users') && context.sql.includes('email')) {
-      // Add index hint
-      return context.sql.replace('FROM users', 'FROM users USE INDEX (idx_email)');
-    }
+registerPlugin(QueryResultTransformerPlugin({
+  transformers: {
+    User: (user) => ({
+      id: user.id,
+      fullName: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      // Remove sensitive data
+      password: undefined,
+      resetToken: undefined
+    }),
+    Product: (product) => ({
+      ...product,
+      price: `$${product.price.toFixed(2)}`,
+      inStock: product.quantity > 0
+    })
   },
   enableLogging: true
 }));
+```
 
-// Example 3: Block dangerous queries in production
-if (process.env.NODE_ENV === 'production') {
-  registerPlugin(SafetyModifier()); // Blocks DELETE/UPDATE without WHERE
-}
+</details>
 
-// Example 4: Custom query modification
+---
+
+### **🛠️ Utilities**
+
+<details>
+<summary><strong>🏷️ TableExtractor</strong> - Extract table names from queries</summary>
+
+#### **What it does:**
+Extracts all table names from any TypeORM query (SELECT, INSERT, UPDATE, DELETE, CTEs, subqueries, joins).
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `warnOnEmptyTables` | `boolean` | `false` | Warn when no tables are extracted |
+| `enableLogging` | `boolean` | `false` | Log extracted tables |
+
+#### **Usage:**
+
+```typescript
+import { createTableExtractorPlugin, extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
+
+registerPlugin(createTableExtractorPlugin({
+  warnOnEmptyTables: true,
+  enableLogging: true
+}));
+
+// Use directly in code:
+const query = userRepo.createQueryBuilder('user')
+  .leftJoin('user.posts', 'posts');
+const tables = extractTablesFromBuilder(query);
+// Or:
+const tables2 = query.getInvolvedTables();
+```
+
+</details>
+
+<details>
+<summary><strong>✅ ResultValidator</strong> - Validate query results</summary>
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `largeResultThreshold` | `number` | `1000` | Threshold for large result set (rows) |
+| `monitorTables` | `string[]` | `[]` (all) | Tables to monitor. Empty = all |
+| `onEmptyResult` | `function` | `undefined` | Callback when query returns no results |
+| `onLargeResult` | `function` | `undefined` | Callback when result exceeds threshold |
+| `enableLogging` | `boolean` | `false` | Auto-log validation warnings |
+
+#### **Usage:**
+
+```typescript
+import { ResultValidatorPlugin } from 'typeorm-query-hooks/plugins/result-validator';
+
+registerPlugin(ResultValidatorPlugin({
+  largeResultThreshold: 5000,
+  monitorTables: ['users', 'orders'],
+  enableLogging: true,
+  onLargeResult: (context) => {
+    logger.warn(`Large result: ${context.rowCount} rows - consider pagination`);
+  }
+}));
+```
+
+</details>
+
+<details>
+<summary><strong>✏️ QueryModifier</strong> - Modify queries before execution</summary>
+
+#### **Configuration:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `modifySql` | `function` | `undefined` | Modify SQL before execution |
+| `modifyParameters` | `function` | `undefined` | Modify parameters before execution |
+| `shouldExecute` | `function` | `undefined` | Return false to cancel query |
+| `enableLogging` | `boolean` | `false` | Auto-log modifications |
+
+#### **Usage:**
+
+```typescript
+import { QueryModifierPlugin, TenantFilterModifier, SafetyModifier } from 'typeorm-query-hooks/plugins/query-modifier';
+
+// Multi-tenancy
+registerPlugin(TenantFilterModifier({
+  getTenantId: () => getCurrentUser().tenantId,
+  tables: ['orders', 'products'],
+  tenantColumn: 'tenant_id'
+}));
+
+// Block queries during maintenance
 registerPlugin(QueryModifierPlugin({
   shouldExecute: (context) => {
-    // Block queries during maintenance window
     if (isMaintenanceMode()) {
-      console.error('Database is in maintenance mode');
-      return false; // Cancel query execution
+      console.error('Database in maintenance');
+      return false;
     }
     return true;
   }
 }));
 ```
 
-### 4. **Table Extraction**
+</details>
 
-Extract all tables from any query for logging, caching, or access control.
+<details>
+<summary><strong>🔍 QueryComplexity</strong> - Warn on complex queries</summary>
 
-```typescript
-import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
-import { TableExtractorPlugin, extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
+#### **Configuration:**
 
-enableQueryHooks();
-registerPlugin(TableExtractorPlugin);
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `maxJoins` | `number` | `5` | Max joins before warning |
+| `maxTables` | `number` | `10` | Max tables before warning |
+| `warnOnSubqueries` | `boolean` | `false` | Warn on subqueries |
+| `warnOnCTEs` | `boolean` | `false` | Warn on Common Table Expressions |
+| `onComplexQuery` | `function` | `undefined` | Callback when complex query detected |
+| `enableLogging` | `boolean` | `false` | Auto-log complexity warnings |
 
-// Now use it in your code
-const users = await dataSource
-  .getRepository(User)
-  .createQueryBuilder('user')
-  .leftJoinAndSelect('user.profile', 'profile')
-  .where('user.email = :email', { email: 'test@example.com' })
-  .getMany();
-
-// Extract tables manually if needed
-const query = dataSource
-  .getRepository(Order)
-  .createQueryBuilder('order')
-  .leftJoin('order.customer', 'customer')
-  .leftJoin('order.items', 'items');
-
-const tables = extractTablesFromBuilder(query);
-console.log(tables); // ['orders', 'customers', 'order_items']
-
-// Or use the utility method added to QueryBuilder
-const tables2 = query.getInvolvedTables();
-console.log(tables2); // ['orders', 'customers', 'order_items']
-```
-
-### 5. **Access Control & Auditing**
-
-Track which tables are accessed by which users.
+#### **Usage:**
 
 ```typescript
-import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
-import { extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
+import { QueryComplexityPlugin } from 'typeorm-query-hooks/plugins/query-complexity';
 
-enableQueryHooks();
-
-// Custom plugin for access control
-const AccessControlPlugin: QueryHookPlugin = {
-  name: 'AccessControl',
-  
-  onQueryBuild: (context) => {
-    const tables = extractTablesFromBuilder(context.builder);
-    const user = getCurrentUser();
-    
-    // Check if user has access to these tables
-    const forbiddenTables = tables.filter(table => 
-      !user.permissions.includes(`read:${table}`)
-    );
-    
-    if (forbiddenTables.length > 0) {
-      throw new Error(`Access denied to tables: ${forbiddenTables.join(', ')}`);
-    }
-    
-    // Audit log
-    auditLog.log({
-      userId: user.id,
-      action: 'query',
-      tables,
-      timestamp: new Date()
-    });
-  }
-};
-
-registerPlugin(AccessControlPlugin);
+registerPlugin(QueryComplexityPlugin({
+  maxJoins: 3,
+  maxTables: 5,
+  warnOnSubqueries: true,
+  enableLogging: true
+}));
 ```
 
-### 6. **Cache Invalidation**
+</details>
 
-Automatically invalidate cache when specific tables are modified.
+<details>
+<summary><strong>🪵 QueryLogger</strong> - Custom query logging with filters</summary>
 
-```typescript
-import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
-import { extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
+See plugin documentation for details.
 
-enableQueryHooks();
+</details>
 
-const CacheInvalidationPlugin: QueryHookPlugin = {
-  name: 'CacheInvalidation',
-  
-  onQueryComplete: (context) => {
-    const queryType = context.queryType?.toUpperCase();
-    
-    // Only invalidate on write operations
-    if (['INSERT', 'UPDATE', 'DELETE'].includes(queryType || '')) {
-      const tables = extractTablesFromBuilder(context.builder);
-      
-      // Clear cache for affected tables
-      tables.forEach(table => {
-        redis.del(`cache:${table}:*`);
-        console.log(`Cache invalidated for table: ${table}`);
-      });
-    }
-  }
-};
+<details>
+<summary><strong>💾 QueryMetadataRegistry</strong> - Store query metadata</summary>
 
-registerPlugin(CacheInvalidationPlugin);
-```
+Automatically registered when using NestJS integration. See NestJS section below.
 
-### 7. **Distributed Tracing**
-
-Integrate with OpenTelemetry or Jaeger for distributed tracing.
-
-```typescript
-import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
-
-enableQueryHooks();
-
-const TracingPlugin: QueryHookPlugin = {
-  name: 'DistributedTracing',
-  
-  onQueryStart: (context) => {
-    const tracer = trace.getTracer('typeorm');
-    const span = tracer.startSpan(`db.query.${context.methodName}`, {
-      attributes: {
-        'db.statement': context.sql,
-        'db.operation': context.queryType
-      }
-    });
-    
-    // Store span in context for later
-    (context as any).span = span;
-  },
-  
-  onQueryComplete: (context) => {
-    const span = (context as any).span;
-    if (span) {
-      span.setAttribute('db.duration_ms', context.executionTime);
-      span.setStatus({ code: SpanStatusCode.OK });
-      span.end();
-    }
-  },
-  
-  onQueryError: (context) => {
-    const span = (context as any).span;
-    if (span) {
-      span.setStatus({ 
-        code: SpanStatusCode.ERROR,
-        message: context.error.message 
-      });
-      span.end();
-    }
-  }
-};
-
-registerPlugin(TracingPlugin);
-```
-
-### 8. **Transaction Monitoring**
-
-Track transaction lifecycle for debugging and monitoring.
-
-```typescript
-import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
-
-enableQueryHooks();
-
-const TransactionMonitorPlugin: QueryHookPlugin = {
-  name: 'TransactionMonitor',
-  
-  onTransactionStart: (context) => {
-    console.log('🔄 Transaction started', {
-      timestamp: context.timestamp,
-      queryRunner: context.queryRunner
-    });
-  },
-  
-  onTransactionCommit: (context) => {
-    console.log('✅ Transaction committed', {
-      executionTime: context.executionTime,
-      queriesExecuted: context.queriesExecuted?.length || 0
-    });
-    
-    // Clear cache after successful transaction
-    redis.del('cache:*');
-  },
-  
-  onTransactionRollback: (context) => {
-    console.error('❌ Transaction rolled back', {
-      error: context.error.message,
-      executionTime: context.executionTime
-    });
-    
-    // Send alert to error tracking service
-    Sentry.captureException(context.error, {
-      extra: {
-        queriesExecuted: context.queriesExecuted
-      }
-    });
-  },
-  
-  onTransactionEnd: (context) => {
-    console.log('🏁 Transaction ended', {
-      duration: context.executionTime
-    });
-  }
-};
-
-registerPlugin(TransactionMonitorPlugin);
-```
-
-### 9. **Connection Pool Monitoring**
-
-Monitor database connection pool health.
-
-```typescript
-import { enableQueryHooks, registerPlugin, QueryHookPlugin } from 'typeorm-query-hooks';
-
-enableQueryHooks();
-
-const ConnectionPoolPlugin: QueryHookPlugin = {
-  name: 'ConnectionPoolMonitor',
-  
-  onConnectionAcquired: (context) => {
-    console.log('🔗 Connection acquired', {
-      activeConnections: context.activeConnections,
-      idleConnections: context.idleConnections
-    });
-    
-    // Track connection pool metrics
-    prometheus.gauge('db_connections_active', context.activeConnections || 0);
-    prometheus.gauge('db_connections_idle', context.idleConnections || 0);
-  },
-  
-  onConnectionReleased: (context) => {
-    console.log('🔓 Connection released');
-  },
-  
-  onConnectionPoolFull: (context) => {
-    console.error('🚨 Connection pool exhausted!', {
-      maxConnections: context.maxConnections,
-      waitingCount: context.waitingCount
-    });
-    
-    // Send critical alert
-    pagerduty.trigger({
-      severity: 'critical',
-      summary: 'Database connection pool exhausted',
-      details: context
-    });
-  },
-  
-  onConnectionError: (context) => {
-    console.error('❌ Connection error', {
-      error: context.error.message
-    });
-    
-    // Track connection errors
-    datadog.increment('db_connection_errors');
-  }
-};
-
-registerPlugin(ConnectionPoolPlugin);
-```
+</details>
 
 ---
 
 ## 🎨 Creating Custom Plugins
 
-Creating your own plugin is simple! Just implement the `QueryHookPlugin` interface:
-
 ```typescript
-import { QueryHookPlugin, QueryHookContext } from 'typeorm-query-hooks';
+import { QueryHookPlugin } from 'typeorm-query-hooks';
 
 const MyCustomPlugin: QueryHookPlugin = {
   name: 'MyCustomPlugin',
   
-  // Optional: Initialize when registered
-  onRegister: () => {
-    console.log('Plugin registered!');
-  },
-  
-  // Optional: Setup when hooks are enabled
-  onEnable: () => {
-    console.log('Hooks enabled!');
-  },
-  
-  // Implement any hooks you need
-  onQueryBuild: (context: QueryHookContext) => {
+  onQueryBuild: (context) => {
     console.log('Query built:', context.sql);
-  },
-  
-  onBeforeQuery: (context) => {
-    // Modify SQL before execution
-    if (context.sql.includes('SELECT *')) {
-      console.warn('SELECT * is not recommended');
-    }
-    return true; // Return false to cancel query
   },
   
   onQueryComplete: (context) => {
@@ -744,187 +838,70 @@ const MyCustomPlugin: QueryHookPlugin = {
   
   onSlowQuery: (context) => {
     console.warn('Slow query detected!');
-  },
-  
-  onEmptyResult: (context) => {
-    console.warn('Query returned no results');
   }
 };
 
-// Register your plugin
 registerPlugin(MyCustomPlugin);
 ```
 
 ---
 
-## 🔧 API Reference
-
-### **Core Functions**
-
-#### `enableQueryHooks(options?)`
-
-Enable the hook system. Call once at application startup.
+## 🔧 NestJS Integration
 
 ```typescript
-enableQueryHooks({
-  verbose: boolean  // Enable debug logging (default: false)
-});
-```
+// main.ts or app.module.ts
+import { enableQueryHooks, registerPlugin } from 'typeorm-query-hooks';
+import { NPlusOneDetectorPlugin } from 'typeorm-query-hooks/plugins/n-plus-one-detector';
+import { SafetyGuardPlugin } from 'typeorm-query-hooks/plugins/safety-guard';
 
-**Note:** Configuration like thresholds and warnings are now plugin-specific. Each plugin has its own options.
+// Enable before TypeORM connection
+enableQueryHooks({ verbose: false });
 
-#### `registerPlugin(plugin)`
+// Register essential plugins
+registerPlugin(NPlusOneDetectorPlugin({ threshold: 5, enableLogging: true }));
+registerPlugin(SafetyGuardPlugin({ requireWhereClause: true }));
 
-Register a plugin to receive hooks.
-
-```typescript
-registerPlugin(MyPlugin);
-```
-
-#### `unregisterPlugin(pluginName)`
-
-Unregister a plugin by name.
-
-```typescript
-unregisterPlugin('MyPlugin');
-```
-
-#### `isHooksEnabled()`
-
-Check if hooks are currently enabled.
-
-```typescript
-const enabled = isHooksEnabled(); // boolean
-```
-
-### **Utility Functions**
-
-#### `getTablesFromSQL(sql: string): string[]`
-
-Extract table names from a SQL string.
-
-```typescript
-import { getTablesFromSQL } from 'typeorm-query-hooks';
-
-const tables = getTablesFromSQL('SELECT * FROM users JOIN orders ON users.id = orders.user_id');
-// Returns: ['users', 'orders']
-```
-
-#### `extractTablesFromBuilder(builder): string[]`
-
-Extract table names from a QueryBuilder instance.
-
-```typescript
-import { extractTablesFromBuilder } from 'typeorm-query-hooks/plugins/table-extractor';
-
-const query = dataSource.getRepository(User).createQueryBuilder('user');
-const tables = extractTablesFromBuilder(query);
-```
-
-#### `builder.getInvolvedTables(): string[]`
-
-Added method to all QueryBuilder instances (after TableExtractorPlugin is registered).
-
-```typescript
-const query = dataSource.getRepository(User).createQueryBuilder('user');
-const tables = query.getInvolvedTables(); // ['users']
+@Module({
+  imports: [TypeOrmModule.forRoot({ /* ... */ })],
+})
+export class AppModule {}
 ```
 
 ---
 
 ## 🐛 Debugging
 
-Enable verbose mode to see detailed logging:
+Enable verbose mode to see detailed hook execution:
 
 ```typescript
 enableQueryHooks({ verbose: true });
 ```
 
-This will log:
+**What it logs:**
 - When hooks are enabled
-- When plugins are registered
-- When each hook is triggered
+- When plugins are registered  
+- When each hook fires
 - SQL queries being captured
 - Tables extracted from queries
 - Execution timing
 
-### Plugin-Specific Configuration
-
-Each plugin has its own configuration options:
-
-**PerformanceMonitorPlugin:**
-```typescript
-registerPlugin(PerformanceMonitorPlugin({
-  slowQueryThreshold: 500,  // ms (default: 500)
-  enableLogging: true,      // console logging (default: false)
-  onSlowQuery: (context) => { /* custom handler */ },
-  onMetric: (context) => { /* custom handler */ }
-}));
-```
-
-**ResultValidatorPlugin:**
-```typescript
-registerPlugin(ResultValidatorPlugin({
-  largeResultThreshold: 1000,  // rows (default: 1000)
-  monitorTables: ['users', 'orders'],  // specific tables (default: [] = all)
-  enableLogging: true,  // console logging (default: false)
-  onEmptyResult: (context) => { /* custom handler */ },
-  onLargeResult: (context) => { /* custom handler */ }
-}));
-```
-
-**TableExtractorPlugin:**
-```typescript
-registerPlugin(createTableExtractorPlugin({
-  warnOnEmptyTables: true,  // warn when no tables found (default: false)
-  enableLogging: true       // console logging (default: false)
-}));
-```
-
-Empty tables warning example (when `warnOnEmptyTables: true`):
-```
-[TableExtractor] ⚠️  No tables extracted from SELECT query.
-This might indicate an issue with table extraction or a raw query without table metadata.
-```
-
 ---
 
-## 🏗️ How It Works
+## 📊 Real-World Impact
 
-1. **Patching**: The library patches TypeORM's `QueryBuilder` methods (`getQuery`, `getOne`, `getMany`, `execute`, etc.)
-2. **Hook Execution**: When a query is built or executed, registered plugins receive callbacks with rich context
-3. **Table Extraction**: Uses TypeORM's internal `expressionMap` to extract table names (no regex!)
-4. **AsyncLocalStorage**: Query context is passed through async boundaries using Node.js `AsyncLocalStorage`
-5. **Zero Config**: No changes to your existing TypeORM code required
+### **Before typeorm-query-hooks:**
+- ❌ N+1 queries slow down production (found after users complain)
+- ❌ Accidental `DELETE FROM users` without WHERE
+- ❌ Connection pool exhausted → app crash
+- ❌ Slow query → manually copy SQL → run EXPLAIN → find issue
+- ❌ Don't know which file:line caused the query
 
----
-
-## 🔮 Future Extensibility
-
-This library is designed to grow! Potential future hooks:
-
-- ✅ Query Performance Monitoring (✓ **Implemented in v4.0**)
-- ✅ Result Validation (✓ **Implemented in v4.0**)
-- ✅ Query Modification (✓ **Implemented in v4.0**)
-- ✅ Transaction Tracking (✓ **Implemented in v4.0**)
-- 🔜 Connection Pool Monitoring (coming soon)
-- 🔜 Migration Lifecycle Hooks (coming soon)
-- 🔜 Schema Synchronization Hooks (coming soon)
-- 🔜 Entity Lifecycle Integration (coming soon)
-
-**Have an idea?** [Open an issue](https://github.com/RoyLeibo/typeorm-query-hooks/issues) or submit a PR!
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
-
----
-
-## 📄 License
-
-MIT © [Roy Leibovitz](https://github.com/RoyLeibo)
+### **After typeorm-query-hooks:**
+- ✅ N+1 detected in development automatically
+- ✅ Dangerous queries blocked before execution
+- ✅ Connection leaks caught immediately
+- ✅ EXPLAIN runs automatically on slow queries
+- ✅ Exact source location shown for every query
 
 ---
 
@@ -934,33 +911,10 @@ If this library helps you, please give it a ⭐️ on [GitHub](https://github.co
 
 ---
 
-## 📊 Use Cases
+## 📄 License
 
-### **Production Monitoring**
-- Track slow queries in production
-- Send metrics to DataDog, New Relic, or Prometheus
-- Alert on query performance degradation
-
-### **Development & Debugging**
-- Identify N+1 query problems
-- Detect missing indexes
-- Validate query correctness
-
-### **Security & Compliance**
-- Audit database access
-- Implement row-level security
-- Enforce multi-tenancy
-
-### **Performance Optimization**
-- Cache invalidation based on table changes
-- Query result caching
-- Connection pool monitoring
-
-### **Observability & APM**
-- Distributed tracing with OpenTelemetry
-- Query timeline visualization
-- Database operation insights
+MIT © [Roy Leibovitz](https://github.com/RoyLeibo)
 
 ---
 
-**Built with ❤️ by [Roy Leibovitz](https://github.com/RoyLeibo)**
+**Built with ❤️ to make TypeORM better for everyone**
