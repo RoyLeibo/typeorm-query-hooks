@@ -125,10 +125,9 @@ registerPlugin(NPlusOneDetectorPlugin({
 
 ## 🏗️ Built-in Plugins (20 Total!)
 
-### **🔥 Critical Performance & Safety**
+## **🔥 Critical Performance & Safety**
 
 <a name="nplusonedetector"></a>
-
 ### **🕵️ NPlusOneDetector** - Detect N+1 query problems (THE #1 performance killer)
 
 **What it does:**
@@ -180,7 +179,6 @@ registerPlugin(NPlusOneDetectorPlugin({
 ---
 
 <a name="safetyguard"></a>
-
 ### **🛡️ SafetyGuard** - Block dangerous database operations
 
 **What it does:**
@@ -232,7 +230,6 @@ registerPlugin(SafetyGuardPlugin({
 ---
 
 <a name="connectionleakdetector"></a>
-
 ### **💧 ConnectionLeakDetector** - Find connection leaks before they crash your app
 
 **What it does:**
@@ -280,7 +277,6 @@ registerPlugin(ConnectionLeakDetectorPlugin({
 
 
 <a name="querytimeout"></a>
-
 ### **⏱️ QueryTimeout** - Automatic query timeouts
 
 **What it does:**
@@ -321,7 +317,6 @@ registerPlugin(QueryTimeoutPlugin({
 
 
 <a name="idletransactionmonitor"></a>
-
 ### **🧟 IdleTransactionMonitor** - Detect zombie transactions
 
 **What it does:**
@@ -373,10 +368,9 @@ registerPlugin(IdleTransactionMonitorPlugin({
 
 ---
 
-### **🔬 Analysis & Debugging**
+## **🔬 Analysis & Debugging**
 
 <a name="querysourcetracer"></a>
-
 ### **📍 QuerySourceTracer** - CSI: Database (find exact file:line in your code)
 
 **What it does:**
@@ -422,7 +416,6 @@ registerPlugin(QuerySourceTracerPlugin({
 
 
 <a name="slowqueryanalyzer"></a>
-
 ### **🔬 SlowQueryAnalyzer** - Auto-run EXPLAIN on slow queries
 
 **What it does:**
@@ -473,7 +466,6 @@ registerPlugin(SlowQueryAnalyzerPlugin({
 
 
 <a name="lazyloadingdetector"></a>
-
 ### **⚠️ LazyLoadingDetector** - Detect lazy-loaded relations (hidden N+1)
 
 **What it does:**
@@ -526,7 +518,6 @@ registerPlugin(LazyLoadingDetectorPlugin({
 
 
 <a name="performancemonitor"></a>
-
 ### **⚡ PerformanceMonitor** - Track query execution time
 
 **What it does:**
@@ -562,10 +553,9 @@ registerPlugin(PerformanceMonitorPlugin({
 
 ---
 
-### **🗃️ Data Management**
+## **🗃️ Data Management**
 
 <a name="cacheinvalidation"></a>
-
 ### **🗑️ CacheInvalidation** - Auto-invalidate cache on data changes
 
 **What it does:**
@@ -599,7 +589,6 @@ registerPlugin(CacheInvalidationPlugin({
 
 
 <a name="auditlogging"></a>
-
 ### **📝 AuditLogging** - Track all database operations (GDPR/HIPAA ready)
 
 **What it does:**
@@ -649,7 +638,6 @@ registerPlugin(AuditLoggingPlugin({
 
 
 <a name="bulkoperations"></a>
-
 ### **📊 BulkOperations** - Prevent accidental mass updates/deletes
 
 **What it does:**
@@ -686,7 +674,6 @@ registerPlugin(BulkOperationsPlugin({
 
 
 <a name="queryresulttransformer"></a>
-
 ### **🔄 QueryResultTransformer** - Auto-transform results to DTOs
 
 **What it does:**
@@ -729,10 +716,9 @@ registerPlugin(QueryResultTransformerPlugin({
 
 ---
 
-### **🛠️ Utilities**
+## **🛠️ Utilities**
 
 <a name="tableextractor"></a>
-
 ### **🏷️ TableExtractor** - Extract table names from queries
 
 **What it does:**
@@ -766,7 +752,6 @@ const tables2 = query.getInvolvedTables();
 
 
 <a name="resultvalidator"></a>
-
 ### **✅ ResultValidator** - Validate query results
 
 **Configuration:**
@@ -797,7 +782,6 @@ registerPlugin(ResultValidatorPlugin({
 
 
 <a name="querymodifier"></a>
-
 ### **✏️ QueryModifier** - Modify queries before execution
 
 **Configuration:**
@@ -836,7 +820,6 @@ registerPlugin(QueryModifierPlugin({
 
 
 <a name="querycomplexity"></a>
-
 ### **🔍 QueryComplexity** - Warn on complex queries
 
 **Configuration:**
@@ -866,7 +849,6 @@ registerPlugin(QueryComplexityPlugin({
 
 
 <a name="querylogger"></a>
-
 ### **🪵 QueryLogger** - Custom query logging with filters
 
 See plugin documentation for details.
@@ -874,7 +856,6 @@ See plugin documentation for details.
 
 
 <a name="querymetadataregistry"></a>
-
 ### **💾 QueryMetadataRegistry** - Store query metadata
 
 Automatically registered when using NestJS integration. See NestJS section below.
