@@ -38,37 +38,37 @@
 ### **🔥 Critical Performance & Safety**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| [🕵️ **NPlusOneDetector**](#%EF%B8%8F-nplusonedetector---detect-n1-query-problems-the-1-performance-killer) | Detect N+1 query problems | #1 performance killer - catches 80% of issues |
-| [🛡️ **SafetyGuard**](#%EF%B8%8F-safetyguard---block-dangerous-database-operations) | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL |
-| [💧 **ConnectionLeakDetector**](#-connectionleakdetector---find-connection-leaks-before-they-crash-your-app) | Find connection leaks | Prevents pool exhaustion and app crashes |
-| [⏱️ **QueryTimeout**](#%EF%B8%8F-querytimeout---automatic-query-timeouts) | Automatic query timeouts | Prevents queries from hanging forever |
-| [🧟 **IdleTransactionMonitor**](#-idletransactionmonitor---detect-zombie-transactions) | Detect zombie transactions | Prevents deadlocks from idle transactions |
+| [🕵️ **NPlusOneDetector**](#nplusonedetector) | Detect N+1 query problems | #1 performance killer - catches 80% of issues |
+| [🛡️ **SafetyGuard**](#safetyguard) | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL |
+| [💧 **ConnectionLeakDetector**](#connectionleakdetector) | Find connection leaks | Prevents pool exhaustion and app crashes |
+| [⏱️ **QueryTimeout**](#querytimeout) | Automatic query timeouts | Prevents queries from hanging forever |
+| [🧟 **IdleTransactionMonitor**](#idletransactionmonitor) | Detect zombie transactions | Prevents deadlocks from idle transactions |
 
 ### **🔬 Analysis & Debugging**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| [📍 **QuerySourceTracer**](#-querysourcetracer---csi-database-find-exact-fileline-in-your-code) | Show where queries originate | CSI: Database - find exact file:line in your code |
-| [🔬 **SlowQueryAnalyzer**](#-slowqueryanalyzer---auto-run-explain-on-slow-queries) | Auto-run EXPLAIN on slow queries | Automatic query plan analysis |
-| [⚠️ **LazyLoadingDetector**](#%EF%B8%8F-lazyloadingdetector---detect-lazy-loaded-relations-hidden-n1) | Detect lazy-loaded relations | Catches hidden N+1 problems |
-| [⚡ **PerformanceMonitor**](#-performancemonitor---track-query-execution-time) | Track query execution time | Monitor and optimize performance |
+| [📍 **QuerySourceTracer**](#querysourcetracer) | Show where queries originate | CSI: Database - find exact file:line in your code |
+| [🔬 **SlowQueryAnalyzer**](#slowqueryanalyzer) | Auto-run EXPLAIN on slow queries | Automatic query plan analysis |
+| [⚠️ **LazyLoadingDetector**](#lazyloadingdetector) | Detect lazy-loaded relations | Catches hidden N+1 problems |
+| [⚡ **PerformanceMonitor**](#performancemonitor) | Track query execution time | Monitor and optimize performance |
 
 ### **🗃️ Data Management**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| [🗑️ **CacheInvalidation**](#%EF%B8%8F-cacheinvalidation---auto-invalidate-cache-on-data-changes) | Auto-invalidate cache on writes | Maintain cache consistency |
-| [📝 **AuditLogging**](#-auditlogging---track-all-database-operations-gdprhipaa-ready) | Track all database operations | Compliance (GDPR, HIPAA), security |
-| [📊 **BulkOperations**](#-bulkoperations---prevent-accidental-mass-updatesdeletes) | Detect bulk operations | Prevent accidental mass updates |
-| [🔄 **QueryResultTransformer**](#-queryresulttransformer---auto-transform-results-to-dtos) | Transform query results | Auto-convert to DTOs, remove sensitive data |
+| [🗑️ **CacheInvalidation**](#cacheinvalidation) | Auto-invalidate cache on writes | Maintain cache consistency |
+| [📝 **AuditLogging**](#auditlogging) | Track all database operations | Compliance (GDPR, HIPAA), security |
+| [📊 **BulkOperations**](#bulkoperations) | Detect bulk operations | Prevent accidental mass updates |
+| [🔄 **QueryResultTransformer**](#queryresulttransformer) | Transform query results | Auto-convert to DTOs, remove sensitive data |
 
 ### **🛠️ Utilities**
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
-| [🏷️ **TableExtractor**](#%EF%B8%8F-tableextractor---extract-table-names-from-queries) | Extract table names from queries | Logging, caching, access control |
-| [✅ **ResultValidator**](#-resultvalidator---validate-query-results) | Validate query results | Alert on empty results, pagination issues |
-| [✏️ **QueryModifier**](#%EF%B8%8F-querymodifier---modify-queries-before-execution) | Modify queries before execution | Multi-tenancy, query hints, safety |
-| [🔍 **QueryComplexity**](#-querycomplexity---warn-on-complex-queries) | Warn on complex queries | Identify queries needing optimization |
-| [💾 **QueryMetadataRegistry**](#-querymetadataregistry---store-query-metadata) | Store query metadata | Analytics, cross-cutting concerns |
-| [🪵 **QueryLogger**](#-querylogger---custom-query-logging-with-filters) | Custom query logging | Flexible logging with filters |
+| [🏷️ **TableExtractor**](#tableextractor) | Extract table names from queries | Logging, caching, access control |
+| [✅ **ResultValidator**](#resultvalidator) | Validate query results | Alert on empty results, pagination issues |
+| [✏️ **QueryModifier**](#querymodifier) | Modify queries before execution | Multi-tenancy, query hints, safety |
+| [🔍 **QueryComplexity**](#querycomplexity) | Warn on complex queries | Identify queries needing optimization |
+| [💾 **QueryMetadataRegistry**](#querymetadataregistry) | Store query metadata | Analytics, cross-cutting concerns |
+| [🪵 **QueryLogger**](#querylogger) | Custom query logging | Flexible logging with filters |
 
 ---
 
@@ -127,7 +127,9 @@ registerPlugin(NPlusOneDetectorPlugin({
 
 ### **🔥 Critical Performance & Safety**
 
-#### **🕵️ NPlusOneDetector** - Detect N+1 query problems (THE #1 performance killer)
+<a name="nplusonedetector"></a>
+
+### **🕵️ NPlusOneDetector** - Detect N+1 query problems (THE #1 performance killer)
 
 **What it does:**
 Detects when the same query runs repeatedly in a short time window - the classic N+1 problem.
@@ -177,7 +179,9 @@ registerPlugin(NPlusOneDetectorPlugin({
 
 ---
 
-#### **🛡️ SafetyGuard** - Block dangerous database operations
+<a name="safetyguard"></a>
+
+### **🛡️ SafetyGuard** - Block dangerous database operations
 
 **What it does:**
 Prevents catastrophic mistakes like `UPDATE users SET role='admin'` (no WHERE = ALL users become admin!)
@@ -227,7 +231,9 @@ registerPlugin(SafetyGuardPlugin({
 
 ---
 
-#### **💧 ConnectionLeakDetector** - Find connection leaks before they crash your app
+<a name="connectionleakdetector"></a>
+
+### **💧 ConnectionLeakDetector** - Find connection leaks before they crash your app
 
 **What it does:**
 Detects connections that are acquired but never released - leads to pool exhaustion.
@@ -273,7 +279,9 @@ registerPlugin(ConnectionLeakDetectorPlugin({
 
 
 
-#### **⏱️ QueryTimeout** - Automatic query timeouts
+<a name="querytimeout"></a>
+
+### **⏱️ QueryTimeout** - Automatic query timeouts
 
 **What it does:**
 Prevents queries from hanging forever and blocking the connection pool.
@@ -312,7 +320,9 @@ registerPlugin(QueryTimeoutPlugin({
 
 
 
-#### **🧟 IdleTransactionMonitor** - Detect zombie transactions
+<a name="idletransactionmonitor"></a>
+
+### **🧟 IdleTransactionMonitor** - Detect zombie transactions
 
 **What it does:**
 Detects transactions that sit idle (no queries running) - causes deadlocks.
@@ -365,7 +375,9 @@ registerPlugin(IdleTransactionMonitorPlugin({
 
 ### **🔬 Analysis & Debugging**
 
-#### **📍 QuerySourceTracer** - CSI: Database (find exact file:line in your code)
+<a name="querysourcetracer"></a>
+
+### **📍 QuerySourceTracer** - CSI: Database (find exact file:line in your code)
 
 **What it does:**
 Shows you EXACTLY where in your code each query originated.
@@ -409,7 +421,9 @@ registerPlugin(QuerySourceTracerPlugin({
 
 
 
-#### **🔬 SlowQueryAnalyzer** - Auto-run EXPLAIN on slow queries
+<a name="slowqueryanalyzer"></a>
+
+### **🔬 SlowQueryAnalyzer** - Auto-run EXPLAIN on slow queries
 
 **What it does:**
 Automatically runs `EXPLAIN` (or `EXPLAIN ANALYZE`) on slow queries to show you WHY they're slow.
@@ -458,7 +472,9 @@ registerPlugin(SlowQueryAnalyzerPlugin({
 
 
 
-#### **⚠️ LazyLoadingDetector** - Detect lazy-loaded relations (hidden N+1)
+<a name="lazyloadingdetector"></a>
+
+### **⚠️ LazyLoadingDetector** - Detect lazy-loaded relations (hidden N+1)
 
 **What it does:**
 Warns when lazy-loaded relations are accessed (often causes hidden N+1 queries).
@@ -509,7 +525,9 @@ registerPlugin(LazyLoadingDetectorPlugin({
 
 
 
-#### **⚡ PerformanceMonitor** - Track query execution time
+<a name="performancemonitor"></a>
+
+### **⚡ PerformanceMonitor** - Track query execution time
 
 **What it does:**
 Monitors query performance and detects slow queries.
@@ -546,7 +564,9 @@ registerPlugin(PerformanceMonitorPlugin({
 
 ### **🗃️ Data Management**
 
-#### **🗑️ CacheInvalidation** - Auto-invalidate cache on data changes
+<a name="cacheinvalidation"></a>
+
+### **🗑️ CacheInvalidation** - Auto-invalidate cache on data changes
 
 **What it does:**
 Automatically invalidates cache when `INSERT`, `UPDATE`, or `DELETE` operations occur.
@@ -578,7 +598,9 @@ registerPlugin(CacheInvalidationPlugin({
 
 
 
-#### **📝 AuditLogging** - Track all database operations (GDPR/HIPAA ready)
+<a name="auditlogging"></a>
+
+### **📝 AuditLogging** - Track all database operations (GDPR/HIPAA ready)
 
 **What it does:**
 Comprehensive audit trail of who did what, when, and on which tables.
@@ -626,7 +648,9 @@ registerPlugin(AuditLoggingPlugin({
 
 
 
-#### **📊 BulkOperations** - Prevent accidental mass updates/deletes
+<a name="bulkoperations"></a>
+
+### **📊 BulkOperations** - Prevent accidental mass updates/deletes
 
 **What it does:**
 Detects operations affecting many rows - prevents accidents like deleting 100,000 records.
@@ -661,7 +685,9 @@ registerPlugin(BulkOperationsPlugin({
 
 
 
-#### **🔄 QueryResultTransformer** - Auto-transform results to DTOs
+<a name="queryresulttransformer"></a>
+
+### **🔄 QueryResultTransformer** - Auto-transform results to DTOs
 
 **What it does:**
 Automatically transforms database results to DTOs, removes sensitive data, adds computed fields.
@@ -705,7 +731,9 @@ registerPlugin(QueryResultTransformerPlugin({
 
 ### **🛠️ Utilities**
 
-#### **🏷️ TableExtractor** - Extract table names from queries
+<a name="tableextractor"></a>
+
+### **🏷️ TableExtractor** - Extract table names from queries
 
 **What it does:**
 Extracts all table names from any TypeORM query (SELECT, INSERT, UPDATE, DELETE, CTEs, subqueries, joins).
@@ -737,7 +765,9 @@ const tables2 = query.getInvolvedTables();
 
 
 
-#### **✅ ResultValidator** - Validate query results
+<a name="resultvalidator"></a>
+
+### **✅ ResultValidator** - Validate query results
 
 **Configuration:**
 
@@ -766,7 +796,9 @@ registerPlugin(ResultValidatorPlugin({
 
 
 
-#### **✏️ QueryModifier** - Modify queries before execution
+<a name="querymodifier"></a>
+
+### **✏️ QueryModifier** - Modify queries before execution
 
 **Configuration:**
 
@@ -803,7 +835,9 @@ registerPlugin(QueryModifierPlugin({
 
 
 
-#### **🔍 QueryComplexity** - Warn on complex queries
+<a name="querycomplexity"></a>
+
+### **🔍 QueryComplexity** - Warn on complex queries
 
 **Configuration:**
 
@@ -831,13 +865,17 @@ registerPlugin(QueryComplexityPlugin({
 
 
 
-#### **🪵 QueryLogger** - Custom query logging with filters
+<a name="querylogger"></a>
+
+### **🪵 QueryLogger** - Custom query logging with filters
 
 See plugin documentation for details.
 
 
 
-#### **💾 QueryMetadataRegistry** - Store query metadata
+<a name="querymetadataregistry"></a>
+
+### **💾 QueryMetadataRegistry** - Store query metadata
 
 Automatically registered when using NestJS integration. See NestJS section below.
 
