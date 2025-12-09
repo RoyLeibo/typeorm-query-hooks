@@ -384,11 +384,13 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
     };
 
     // Patch ALL execution methods to trigger performance monitoring and result hooks
+    // NOTE: 'insert', 'update', 'delete' are BUILDER methods (return builders), not execution methods
+    // Only 'execute' actually runs INSERT/UPDATE/DELETE queries
     const executionMethods = [
       // Read operations
       'getOne', 'getMany', 'getRawOne', 'getRawMany', 'getExists', 'getCount', 'getManyAndCount', 'getRawAndEntities',
-      // Write operations
-      'execute', 'insert', 'update', 'delete', 'softDelete', 'restore',
+      // Write operations - only 'execute' (update/delete/insert are builder methods, not execution methods)
+      'execute',
       // Stream operations
       'stream'
     ];
@@ -397,17 +399,20 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
       const original = (BuilderClass.prototype as any)[methodName];
       if (original) {
         (BuilderClass.prototype as any)[methodName] = async function (...args: any[]) {
-          const startTime = Date.now();
-          let sql: string;
-          let parameters: any[];
-          
+          // CRITICAL: This library should NEVER throw errors to user code
+          // All hook failures should be logged but not propagate
           try {
-            sql = this.getQuery();
-            parameters = (this as any).expressionMap?.parameters || [];
-          } catch (err) {
-            console.warn(`[typeorm-query-hooks] ${methodName}() - getQuery() failed:`, err);
-            return original.apply(this, args);
-          }
+            const startTime = Date.now();
+            let sql: string;
+            let parameters: any[];
+            
+            try {
+              sql = this.getQuery();
+              parameters = (this as any).expressionMap?.parameters || [];
+            } catch (err) {
+              console.warn(`[typeorm-query-hooks] ${methodName}() - getQuery() failed:`, err);
+              return original.apply(this, args);
+            }
           
           verboseLog(`${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
           
@@ -553,6 +558,13 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           });
 
           return result;
+          } catch (hookError) {
+            // CRITICAL: If ANY error occurs in the hook system, log it but don't break user code
+            console.error(`[typeorm-query-hooks] CRITICAL: Hook system error in ${methodName}():`, hookError);
+            console.error('[typeorm-query-hooks] Falling back to original method execution');
+            // Execute the original method without hooks
+            return original.apply(this, args);
+          }
         };
       }
     });
