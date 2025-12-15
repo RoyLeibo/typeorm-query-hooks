@@ -6,6 +6,8 @@ import {
   QueryBuilder,
   QueryRunner
 } from 'typeorm';
+import { queryContextStore } from './context-store';
+import { extractTablesFromBuilder } from './plugins/table-extractor';
 
 /**
  * Base context object passed to plugin hooks
@@ -380,6 +382,10 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
         (this as any).expressionMap.parameters = modifiedParameters;
       }
 
+      // Future enhancement: implement query cancellation
+      // if (shouldCancel) { throw new Error('Query cancelled by plugin'); }
+      void shouldCancel;
+
       return sql;
     };
 
@@ -417,9 +423,6 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           verboseLog(`${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
           
           // Store builder in AsyncLocalStorage for logger access
-          const { queryContextStore } = require('./context-store');
-          const { extractTablesFromBuilder } = require('./plugins/table-extractor');
-          
           const tables = extractTablesFromBuilder(this);
           const queryType = (this as any).expressionMap?.queryType;
           const context = {
@@ -592,12 +595,11 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
  */
 function patchTransactionHooks(): void {
   try {
-    // Import QueryRunner dynamically to avoid circular dependencies
-    const { QueryRunner } = require('typeorm');
+    // Note: QueryRunner is imported at the top
     
-    // Store transaction start times
-    const transactionStartTimes = new WeakMap<any, number>();
-    const transactionQueries = new WeakMap<any, string[]>();
+    // Future enhancement: track transaction metrics
+    // const transactionStartTimes = new WeakMap<any, number>();
+    // const transactionQueries = new WeakMap<any, string[]>();
     
     // We can't directly patch QueryRunner as it's an interface
     // Instead, we'll try to patch common implementations
