@@ -1,19 +1,13 @@
-# Code Owners
-# These owners will be automatically requested for review when someone opens a PR
+# CODEOWNERS file
+# This file defines who owns the code in this repository
+# All code requires approval from @RoyLeibo
 
-# Default owner for everything
+# Global rule - Roy Leibovitz owns everything
 * @RoyLeibo
 
-# Core library files
-/src/ @RoyLeibo
-/test/ @RoyLeibo
-
-# Documentation
-*.md @RoyLeibo
-/examples/ @RoyLeibo
-
-# Build and CI/CD
-package.json @RoyLeibo
-tsconfig.json @RoyLeibo
-.github/ @RoyLeibo
-
+# Specific critical files
+/.github/* @RoyLeibo
+/package.json @RoyLeibo
+/package-lock.json @RoyLeibo
+/tsconfig.json @RoyLeibo
+/README.md @RoyLeibo
