@@ -1,4 +1,5 @@
 import { QueryHookPlugin, QueryExecutionContext } from '../index';
+import { extractTablesFromBuilder } from './table-extractor';
 
 /**
  * Options for QueryTimeoutPlugin
@@ -100,7 +101,6 @@ export function QueryTimeoutPlugin(options: QueryTimeoutOptions = {}): QueryHook
       }
 
       // Check table pattern timeout
-      const { extractTablesFromBuilder } = require('./table-extractor');
       const tables = extractTablesFromBuilder(context.builder);
       
       for (const [pattern, patternTimeout] of Object.entries(timeoutByTablePattern)) {
@@ -155,5 +155,6 @@ export function QueryTimeoutPlugin(options: QueryTimeoutOptions = {}): QueryHook
     }
   };
 }
+
 
 

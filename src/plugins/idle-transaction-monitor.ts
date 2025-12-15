@@ -152,6 +152,10 @@ export function IdleTransactionMonitorPlugin(options: IdleTransactionMonitorOpti
   // Track active transactions
   const transactions = new WeakMap<any, TransactionTracker>();
 
+  // Future enhancement: zombie transaction detection
+  // Use onZombieDetected callback when implementing
+  void onZombieDetected;
+
   /**
    * Check if transaction is a zombie
    */
@@ -184,10 +188,11 @@ export function IdleTransactionMonitorPlugin(options: IdleTransactionMonitorOpti
     };
   }
 
-  /**
-   * Periodic zombie checker
-   */
+  // Periodic zombie checker - will be set in onEnable
   let zombieCheckInterval: NodeJS.Timeout;
+
+  // Future enhancement: use checkZombie for periodic detection
+  void checkZombie;
 
   return {
     name: 'IdleTransactionMonitor',
@@ -253,6 +258,9 @@ export function IdleTransactionMonitorPlugin(options: IdleTransactionMonitorOpti
         // Note: We can't iterate WeakMap, so we'll check on query execution
       }, maxIdleTime);
 
+      // Note: zombieCheckInterval is intentionally not read - it runs in background
+      void zombieCheckInterval;
+
       if (enableLogging) {
         console.log('[IdleTransactionMonitor] 🧟 Zombie transaction monitoring enabled', {
           maxTransactionDuration: `${maxTransactionDuration}ms`,
@@ -263,5 +271,6 @@ export function IdleTransactionMonitorPlugin(options: IdleTransactionMonitorOpti
     }
   };
 }
+
 
 

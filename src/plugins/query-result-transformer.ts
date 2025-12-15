@@ -1,4 +1,5 @@
 import { QueryHookPlugin, QueryResultContext } from '../index';
+import { extractTablesFromBuilder } from './table-extractor';
 
 /**
  * Transformer function type
@@ -146,7 +147,6 @@ export function QueryResultTransformerPlugin(options: QueryResultTransformerOpti
       }
 
       // Apply entity-specific transformers
-      const { extractTablesFromBuilder } = require('./table-extractor');
       const tables = extractTablesFromBuilder(context.builder);
 
       if (tables.length > 0 && Object.keys(transformers).length > 0) {
@@ -167,5 +167,6 @@ export function QueryResultTransformerPlugin(options: QueryResultTransformerOpti
     }
   };
 }
+
 
 

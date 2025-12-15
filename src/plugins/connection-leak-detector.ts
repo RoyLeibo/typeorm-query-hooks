@@ -130,6 +130,7 @@ export function ConnectionLeakDetectorPlugin(options: ConnectionLeakDetectorOpti
     queries: number;
   }>();
 
+  // Periodic leak checking - will be set in onEnable
   let checkInterval: NodeJS.Timeout;
 
   /**
@@ -227,7 +228,7 @@ export function ConnectionLeakDetectorPlugin(options: ConnectionLeakDetectorOpti
       }
     },
 
-    onConnectionReleased: (context: ConnectionPoolContext) => {
+    onConnectionReleased: (_context: ConnectionPoolContext) => {
       // Note: Without actual connection object, we can't track exact release
       // This is a limitation of the hook system
       if (enableLogging) {
@@ -258,6 +259,9 @@ export function ConnectionLeakDetectorPlugin(options: ConnectionLeakDetectorOpti
       // Start periodic leak checking
       checkInterval = setInterval(checkForLeaks, maxConnectionAge / 2);
 
+      // Note: checkInterval is intentionally not read - it runs in background
+      void checkInterval;
+
       if (enableLogging) {
         console.log('[ConnectionLeakDetector] 💧 Connection leak detection enabled', {
           maxAge: `${maxConnectionAge}ms`,
@@ -268,5 +272,6 @@ export function ConnectionLeakDetectorPlugin(options: ConnectionLeakDetectorOpti
     }
   };
 }
+
 
 

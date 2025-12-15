@@ -1,4 +1,4 @@
-import { QueryHookPlugin, QueryHookContext, QueryExecutionContext } from '../index';
+import { QueryHookPlugin, QueryHookContext } from '../index';
 import * as path from 'path';
 
 /**
@@ -257,5 +257,6 @@ export function formatSourceLocation(location: SourceLocation | undefined): stri
   return `${location.relativePath}:${location.line}:${location.column}` +
     (location.function ? ` in ${location.function}` : '');
 }
+
 
 

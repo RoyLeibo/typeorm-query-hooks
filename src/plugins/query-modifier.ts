@@ -1,4 +1,5 @@
 import { QueryHookPlugin, PreQueryContext } from '../index';
+import { extractTablesFromBuilder } from './table-extractor';
 
 /**
  * Options for QueryModifierPlugin
@@ -154,7 +155,6 @@ export function TenantFilterModifier(config: {
 
   return QueryModifierPlugin({
     modifySql: (context) => {
-      const { extractTablesFromBuilder } = require('./table-extractor');
       const queryTables = extractTablesFromBuilder(context.builder);
       
       // Check if this query involves any tenant-filtered tables

@@ -1,4 +1,5 @@
 import { QueryHookPlugin, QueryResultContext } from '../index';
+import { extractTablesFromBuilder } from './table-extractor';
 
 /**
  * Options for ResultValidatorPlugin
@@ -80,7 +81,6 @@ export function ResultValidatorPlugin(options: ResultValidatorOptions = {}): Que
       }
 
       // Check if this query involves monitored tables
-      const { extractTablesFromBuilder } = require('./table-extractor');
       const tables = extractTablesFromBuilder(context.builder);
       const isMonitored = monitorTables.length === 0 || 
                           tables.some((table: string) => monitorTables.includes(table));

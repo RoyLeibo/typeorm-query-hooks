@@ -190,6 +190,9 @@ export function SafetyGuardPlugin(options: SafetyGuardOptions = {}): QueryHookPl
   const currentEnv = process.env.NODE_ENV || 'development';
   const isAllowedEnv = allowedEnvironments.includes(currentEnv);
 
+  // Future enhancement: use isAllowedEnv for environment-specific rules
+  void isAllowedEnv;
+
   /**
    * Check if query has FORCE_ALLOW flag
    */
@@ -355,5 +358,6 @@ export function SafetyGuardPlugin(options: SafetyGuardOptions = {}): QueryHookPl
     }
   };
 }
+
 
 

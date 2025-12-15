@@ -1,6 +1,7 @@
 import { QueryBuilder } from 'typeorm';
 import { QueryHookPlugin } from '../index';
 import { extractTablesFromBuilder } from './table-extractor';
+import { queryContextStore } from '../context-store';
 
 /**
  * Metadata associated with a query
@@ -182,7 +183,6 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
 export function getTablesFromSQL(sql: string): string[] {
   // First, try to get tables from AsyncLocalStorage context (most reliable)
   try {
-    const { queryContextStore } = require('../context-store');
     const context = queryContextStore.getStore();
     
     if (context && context.tables) {

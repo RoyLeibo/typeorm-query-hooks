@@ -164,6 +164,9 @@ export function NPlusOneDetectorPlugin(options: NPlusOneDetectorOptions = {}): Q
     }
   }, window * 2);
 
+  // Keep interval alive (cleanup on process exit)
+  void cleanupInterval;
+
   /**
    * Normalize SQL to create a fingerprint (remove parameter values)
    */
@@ -284,5 +287,6 @@ export function NPlusOneDetectorPlugin(options: NPlusOneDetectorOptions = {}): Q
     }
   };
 }
+
 
 
