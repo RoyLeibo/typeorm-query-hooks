@@ -29,13 +29,22 @@
 ### **Extensible:**
 - 🎨 **Create Custom Plugins** - Build your own hooks for specific needs
 - 🔌 **20+ Built-in Plugins** - Ready-to-use solutions for common problems
-- 🎯 **Full TypeScript Support** - Type-safe plugin development
+- 🎯 **Full TypeScript Support** - Type-safe plugin development with exported types
 
 ---
 
 ## 🏗️ **20 Powerful Plugins Included**
 
 > 📚 **Event Callbacks**: All plugins support event callbacks for custom handling. See [PLUGIN_CALLBACKS_REFERENCE.md](./PLUGIN_CALLBACKS_REFERENCE.md) for complete callback documentation.
+> 
+> 💡 **TypeScript**: All callback parameter types are exported and can be imported:
+> ```typescript
+> import { 
+>   QueryExecutionContext, 
+>   ConnectionLeak, 
+>   BlockedOperation 
+> } from 'typeorm-query-hooks';
+> ```
 
 ### **🔥 Critical Performance & Safety**
 | Plugin | Purpose | Use Case |
@@ -1076,6 +1085,85 @@ enableQueryHooks({ verbose: true });
 ## 🌟 Show Your Support
 
 If this library helps you, please give it a ⭐️ on [GitHub](https://github.com/RoyLeibo/typeorm-query-hooks)!
+
+---
+
+## 📘 TypeScript Types Reference
+
+All callback parameter types are fully exported and available for import:
+
+### **Core Context Types**
+```typescript
+import {
+  QueryHookContext,           // Base context for all hooks
+  PreQueryContext,            // Pre-execution hook with setSql(), setParameters()
+  QueryExecutionContext,      // Post-execution with executionTime
+  QueryResultContext,         // With result, rowCount, isEmpty
+  TransactionContext,         // Transaction lifecycle events
+  ConnectionPoolContext,      // Connection pool metrics
+} from 'typeorm-query-hooks';
+```
+
+### **Plugin-Specific Types**
+```typescript
+// Connection Leak Detector
+import { ConnectionLeak } from 'typeorm-query-hooks';
+
+// Safety Guard
+import { BlockedOperation } from 'typeorm-query-hooks';
+
+// Audit Logging
+import { AuditLogEntry } from 'typeorm-query-hooks';
+
+// Query Source Tracer
+import { SourceLocation, QueryContextWithSource } from 'typeorm-query-hooks';
+
+// Slow Query Analyzer
+import { QueryExecutionPlan } from 'typeorm-query-hooks';
+
+// Query Complexity
+import { QueryComplexityMetrics } from 'typeorm-query-hooks';
+
+// Idle Transaction Monitor
+import { ZombieTransaction } from 'typeorm-query-hooks';
+
+// Query Result Transformer
+import { TransformerFn } from 'typeorm-query-hooks';
+```
+
+### **Usage Example with Types**
+```typescript
+import { 
+  registerPlugin,
+  QueryExecutionContext,
+  ConnectionLeak,
+  BlockedOperation 
+} from 'typeorm-query-hooks';
+import { SafetyGuardPlugin } from 'typeorm-query-hooks/plugins/safety-guard';
+import { ConnectionLeakDetectorPlugin } from 'typeorm-query-hooks/plugins/connection-leak-detector';
+
+// Type-safe callbacks
+registerPlugin(SafetyGuardPlugin({
+  onBlocked: (context: PreQueryContext, blocked: BlockedOperation) => {
+    logger.error('Blocked operation', {
+      operation: blocked.operation,
+      tables: blocked.tables,
+      sql: context.sql
+    });
+  }
+}));
+
+registerPlugin(ConnectionLeakDetectorPlugin({
+  onLeak: (leak: ConnectionLeak) => {
+    logger.error('Connection leak detected', {
+      age: leak.age,
+      stackTrace: leak.stackTrace
+    });
+  }
+}));
+```
+
+> **Note:** All types are generated from TypeScript source and include full JSDoc comments for IDE autocomplete.
 
 ---
 
