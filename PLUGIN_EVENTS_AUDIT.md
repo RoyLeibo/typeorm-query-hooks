@@ -457,3 +457,4 @@ export interface PluginOptions {
 
 The main issue is **TableExtractorPlugin** - it's one of the most-used plugins but lacks proper event callbacks, forcing console logging on users.
 
+
