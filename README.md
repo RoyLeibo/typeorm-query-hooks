@@ -101,7 +101,7 @@ enableQueryHooks({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `verbose` | `boolean` | `false` | Enable detailed debug logging for the core hook system. Shows when hooks fire, plugins execute, queries are captured, etc. |
+| `verbose` | `boolean` | `false` | Enable detailed debug logging for the core hook system. Shows: when hooks fire, which plugins execute, query capture events, context propagation, errors. **Very noisy** - use only for troubleshooting plugin issues or understanding hook flow. Never enable in production. |
 
 **When to use `verbose: true`:**
 - Debugging why a plugin isn't working
@@ -152,11 +152,11 @@ for (const user of users) {  // Loop
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `threshold` | `number` | `5` | Maximum number of identical queries allowed within time window |
-| `window` | `number` | `100` | Time window in milliseconds to track query patterns |
-| `includeStackTrace` | `boolean` | `true` | Capture stack trace to show where N+1 originated |
-| `ignorePatterns` | `RegExp[]` | `[]` | Regex patterns to ignore (e.g., `/migrations$/i`) |
-| `enableLogging` | `boolean` | `false` | Auto-log N+1 warnings to console |
+| `threshold` | `number` | `5` | How many times the same query can run in the time window before flagging as N+1. Lower threshold (3-5) catches more issues. Higher (10+) only catches severe cases. |
+| `window` | `number` | `100` | Time window (ms) to track query patterns. 100ms catches most N+1 loops. Increase to 500-1000ms for batch jobs that intentionally space out queries. |
+| `includeStackTrace` | `boolean` | `true` | Capture stack trace showing WHERE in your code the N+1 originated. **Performance impact:** ~1-2ms per query. Essential for fixing N+1 issues - shows exact loop location. |
+| `ignorePatterns` | `RegExp[]` | `[]` | Regex patterns to exclude from N+1 detection. Example: `[/migrations/, /@nestjs/]` ignores framework code. Use to reduce false positives from legitimate repeated queries. |
+| `enableLogging` | `boolean` | `false` | Log N+1 warnings to console with query fingerprint and stack trace. |
 
 **Event Callbacks:**
 
@@ -204,15 +204,15 @@ Prevents catastrophic mistakes like `UPDATE users SET role='admin'` (no WHERE = 
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `blockDDL` | `boolean` | `false` | Block CREATE, ALTER, DROP, TRUNCATE operations |
-| `requireWhereClause` | `boolean` | `true` | Require WHERE clause for UPDATE/DELETE ⚠️ CRITICAL |
-| `blockTruncate` | `boolean` | `true` | Block TRUNCATE operations |
-| `blockDrop` | `boolean` | `true` | Block DROP TABLE/DATABASE operations |
-| `allowedEnvironments` | `string[]` | `['development','test']` | Environments where destructive ops are allowed |
-| `protectedTables` | `string[]` | `[]` | Tables with extra protection (e.g., `['users', 'payments']`) |
-| `allowForce` | `boolean` | `false` | Allow `/* FORCE_ALLOW */` comment to bypass |
-| `throwOnBlock` | `boolean` | `true` | Throw error when operation is blocked |
-| `enableLogging` | `boolean` | `false` | Auto-log blocked operations |
+| `blockDDL` | `boolean` | `false` | Block DDL (Data Definition Language) operations: CREATE, ALTER, DROP, TRUNCATE. Enable in production to prevent schema changes. |
+| `requireWhereClause` | `boolean` | `true` | ⚠️ **CRITICAL** - Blocks UPDATE/DELETE without WHERE clause. Prevents accidentally modifying ALL rows in a table. Should always be `true` in production. |
+| `blockTruncate` | `boolean` | `true` | Block TRUNCATE operations which delete all rows and reset auto-increment. More dangerous than DELETE as it can't be rolled back in some databases. |
+| `blockDrop` | `boolean` | `true` | Block DROP TABLE/DATABASE operations. Prevents accidental data loss from schema deletions. |
+| `allowedEnvironments` | `string[]` | `['development','test']` | Environments where destructive operations are permitted. Checks `process.env.NODE_ENV`. Production should NOT be in this list. |
+| `protectedTables` | `string[]` | `[]` | Tables requiring extra protection beyond normal rules. Operations on these tables ALWAYS require WHERE clause, even in dev. Example: `['users', 'payments', 'audit_logs']` |
+| `allowForce` | `boolean` | `false` | Allow developers to bypass safety checks by adding `/* FORCE_ALLOW */` comment to SQL. Use in dev/staging only, NEVER in production. Example: `/* FORCE_ALLOW */ DELETE FROM temp_data` |
+| `throwOnBlock` | `boolean` | `true` | When `true`: Throws error and stops query execution. When `false`: Logs warning but allows query to proceed. Set to `true` in production for maximum safety. |
+| `enableLogging` | `boolean` | `false` | Log blocked operations to console. Useful for monitoring what operations are being prevented. |
 
 **Event Callbacks:**
 
@@ -264,10 +264,10 @@ await queryRunner.query('SELECT ...');
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `maxConnectionAge` | `number` | `30000` | Max connection age in ms before considered a leak |
-| `warnThreshold` | `number` | `0.8` | Warn when pool usage exceeds this % (0.8 = 80%) |
-| `captureStackTrace` | `boolean` | `true` | Capture where connection was acquired |
-| `enableLogging` | `boolean` | `false` | Auto-log leak warnings |
+| `maxConnectionAge` | `number` | `30000` | Maximum time (ms) a connection can remain acquired before being flagged as leaked. 30 seconds is usually enough for any query. Increase for long-running analytics queries. |
+| `warnThreshold` | `number` | `0.8` | Percentage of pool capacity (0-1) that triggers early warning. 0.8 = warns at 80% full. Helps catch issues before complete pool exhaustion. |
+| `captureStackTrace` | `boolean` | `true` | Captures stack trace when connection is acquired to show WHERE the leak originated. **Performance impact:** ~1-2ms per connection. Disable in high-throughput production if needed. |
+| `enableLogging` | `boolean` | `false` | Auto-log leak warnings to console with stack traces. |
 
 **Event Callbacks:**
 
@@ -309,12 +309,12 @@ Prevents queries from hanging forever and blocking the connection pool.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `defaultTimeout` | `number` | `5000` | Default timeout for all queries (ms) |
-| `timeoutByType` | `Record<string, number>` | `{}` | Override timeout by query type (e.g., `{ 'SELECT': 3000 }`) |
-| `timeoutByTablePattern` | `Record<string, number>` | `{}` | Override by table pattern (e.g., `{ 'report_.*': 30000 }`) |
-| `throwOnTimeout` | `boolean` | `true` | Throw error on timeout |
-| `warningThreshold` | `number` | `0.8` | Trigger warning at % of timeout (0.8 = 80%) |
-| `enableLogging` | `boolean` | `false` | Auto-log timeouts |
+| `defaultTimeout` | `number` | `5000` | Default timeout (ms) for all queries. Prevents queries from hanging indefinitely and blocking connections. 5 seconds is reasonable for OLTP workloads. |
+| `timeoutByType` | `Record<string, number>` | `{}` | Override timeout by operation type. Example: `{ 'SELECT': 3000, 'INSERT': 10000 }`. Useful for setting stricter limits on reads vs writes. |
+| `timeoutByTablePattern` | `Record<string, number>` | `{}` | Override timeout using regex patterns for table names. Example: `{ 'report_.*': 30000, 'analytics_.*': 60000 }`. Allows longer timeouts for known slow tables. |
+| `throwOnTimeout` | `boolean` | `true` | When `true`: Throws error to cancel query. When `false`: Logs warning but lets query continue (not recommended - query will still hold connection). |
+| `warningThreshold` | `number` | `0.8` | Triggers early warning callback at percentage of timeout (0.8 = 80%). Allows proactive logging before actual timeout. Set to `0` to disable warnings. |
+| `enableLogging` | `boolean` | `false` | Auto-log timeout events to console with query details. |
 
 **Event Callbacks:**
 
@@ -370,10 +370,10 @@ await queryRunner.commitTransaction();
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `maxTransactionDuration` | `number` | `5000` | Max transaction duration in ms |
-| `maxIdleTime` | `number` | `1000` | Max idle time (no queries) in ms |
-| `autoRollback` | `boolean` | `false` | Auto-rollback zombie transactions ⚠️ Use carefully |
-| `enableLogging` | `boolean` | `false` | Auto-log zombie warnings |
+| `maxTransactionDuration` | `number` | `5000` | Maximum total transaction duration (ms) from BEGIN to COMMIT/ROLLBACK. Long transactions hold locks and block other queries. 5 seconds is safe for OLTP. |
+| `maxIdleTime` | `number` | `1000` | Maximum idle time (ms) with no queries executing inside a transaction. Detects "zombie" transactions (open but doing nothing). 1 second catches most issues. |
+| `autoRollback` | `boolean` | `false` | ⚠️ **DANGEROUS** - Automatically rollback transactions exceeding limits. **Why dangerous:** May rollback legitimate long-running operations (reports, migrations, batch jobs). **Recommendation:** Keep `false` in production, use `onZombieDetected` callback for alerts instead. Only enable in dev/test environments. |
+| `enableLogging` | `boolean` | `false` | Log zombie transaction warnings to console with duration and idle time. |
 
 **Event Callbacks:**
 
@@ -428,11 +428,11 @@ Shows: `Query from: src/services/UserService.ts:45:12 in UserService.findByEmail
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `basePath` | `string` | `process.cwd()` | Base path to filter stack traces |
-| `attachToQueryContext` | `boolean` | `true` | Make source location available to other plugins |
-| `includeFullStackTrace` | `boolean` | `false` | Include complete stack trace |
-| `ignorePaths` | `string[]` | `['node_modules']` | Paths to ignore in stack traces |
-| `enableLogging` | `boolean` | `false` | Auto-log source location |
+| `basePath` | `string` | `process.cwd()` | Base directory for relative path resolution. Stack traces show paths relative to this. Default is project root. Set to `process.cwd() + '/src'` to show only source files. |
+| `attachToQueryContext` | `boolean` | `true` | When `true`, adds `context.sourceLocation` to query context so other plugins (PerformanceMonitor, NPlusOneDetector, etc.) can access file:line info. Keep enabled for better debugging. |
+| `includeFullStackTrace` | `boolean` | `false` | When `true`, captures entire stack trace (20+ frames). When `false`, captures only first relevant frame. Enable for deep debugging, disable for cleaner logs. |
+| `ignorePaths` | `string[]` | `['node_modules']` | Array of path patterns to skip when tracing. Filters out framework code to show only YOUR code. Example: `['node_modules', 'dist', '@nestjs']` |
+| `enableLogging` | `boolean` | `false` | Log source location for every query. Very verbose - use only for debugging specific issues. |
 
 **Event Callbacks:**
 
@@ -482,10 +482,10 @@ Plugin does it all automatically and logs the execution plan immediately!
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `threshold` | `number` | `1000` | Run EXPLAIN on queries slower than this (ms) |
-| `runAnalyze` | `boolean` | `false` | Run EXPLAIN ANALYZE (actually executes query) ⚠️ |
-| `databaseType` | `string` | `'postgres'` | Database type: `'postgres'`, `'mysql'`, `'mariadb'`, `'sqlite'`, `'mssql'` |
-| `enableLogging` | `boolean` | `false` | Auto-log execution plans |
+| `threshold` | `number` | `1000` | Trigger EXPLAIN analysis for queries slower than this (ms). Helps identify which slow queries need optimization. Lower threshold = more analysis but more overhead. |
+| `runAnalyze` | `boolean` | `false` | ⚠️ **USE WITH CAUTION** - `EXPLAIN ANALYZE` actually **executes the query twice**: once for real results, once for analysis. **Risks:** (1) Write operations (INSERT/UPDATE/DELETE) will modify data twice, (2) Doubles query time, (3) Side effects happen twice. **Safe for:** SELECT queries in non-production. **Never use for:** Production, or any INSERT/UPDATE/DELETE. |
+| `databaseType` | `string` | `'postgres'` | Database type determines EXPLAIN syntax. Supported: `'postgres'`, `'mysql'`, `'mariadb'`, `'sqlite'`, `'mssql'`. Each database has different EXPLAIN output format. |
+| `enableLogging` | `boolean` | `false` | Log EXPLAIN results to console. Shows query plans with cost estimates, index usage, and scan types. |
 
 **Event Callbacks:**
 
@@ -543,10 +543,10 @@ for (const user of users) {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `warnOnLazyLoad` | `boolean` | `true` | ⚠️ **Deprecated** - Use `onLazyLoadDetected` callback instead |
-| `suggestEagerLoading` | `boolean` | `true` | Show code suggestion to fix |
-| `threshold` | `number` | `1` | Warn after N lazy loads of same relation |
-| `enableLogging` | `boolean` | `false` | Auto-log lazy loading warnings |
+| `warnOnLazyLoad` | `boolean` | `true` | ⚠️ **Deprecated** - Use `onLazyLoadDetected` callback instead for custom handling |
+| `suggestEagerLoading` | `boolean` | `true` | When `true`, includes code suggestions in warnings showing how to fix with eager loading (`relations: []` or `.leftJoinAndSelect()`). Helpful for developers learning TypeORM. |
+| `threshold` | `number` | `1` | Number of times same relation can be lazy-loaded before triggering warning. Set to `3-5` to ignore isolated cases and focus on true N+1 patterns. Set to `1` to catch every lazy load. |
+| `enableLogging` | `boolean` | `false` | Log lazy loading warnings to console with suggestions. |
 
 **Event Callbacks:**
 
@@ -587,8 +587,8 @@ Monitors query performance and detects slow queries.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `slowQueryThreshold` | `number` | `500` | Threshold in ms for slow query detection |
-| `enableLogging` | `boolean` | `false` | Auto-log performance metrics |
+| `slowQueryThreshold` | `number` | `500` | Queries exceeding this duration (ms) are flagged as "slow" and trigger `onSlowQuery` callback. Typical values: 100ms for user-facing queries, 500ms for background jobs, 1000ms for reports. |
+| `enableLogging` | `boolean` | `false` | Log performance metrics for every query (duration, SQL, tables). Can be verbose. |
 
 **Event Callbacks:**
 
@@ -631,9 +631,9 @@ Automatically invalidates cache when `INSERT`, `UPDATE`, or `DELETE` operations 
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `invalidateOnTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types that trigger invalidation |
-| `monitorTables` | `string[]` | `[]` (all) | Specific tables to monitor. Empty = all tables |
-| `enableLogging` | `boolean` | `false` | Auto-log cache invalidations |
+| `invalidateOnTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types that trigger cache invalidation. SELECT doesn't invalidate. Add `'TRUNCATE'` if needed. Remove types to skip invalidation for certain operations. |
+| `monitorTables` | `string[]` | `[]` (all) | Limit monitoring to specific tables. Example: `['users', 'products']` only invalidates cache for these tables. Empty array = monitor ALL tables. Use to avoid invalidating rarely-cached tables. |
+| `enableLogging` | `boolean` | `false` | Log every cache invalidation (table names, operation type). |
 
 **Event Callbacks:**
 
@@ -670,12 +670,12 @@ Comprehensive audit trail of who did what, when, and on which tables.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `auditTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types to audit |
-| `auditTables` | `string[]` | `[]` (all) | Tables to audit. Empty = all |
-| `includeSql` | `boolean` | `true` | Include SQL in audit logs |
-| `includeParameters` | `boolean` | `false` | Include parameters (may contain sensitive data) |
-| `metadata` | `object\|function` | `undefined` | Additional metadata to include |
-| `enableLogging` | `boolean` | `false` | Auto-log audit entries |
+| `auditTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types to audit. Typically only data modifications. Add `'SELECT'` to audit reads (verbose). |
+| `auditTables` | `string[]` | `[]` (all) | Limit auditing to specific tables containing sensitive data. Example: `['users', 'payments', 'medical_records']`. Empty = audit ALL tables (can be storage-intensive). |
+| `includeSql` | `boolean` | `true` | Include full SQL statement in audit logs. Useful for forensics but increases log size. |
+| `includeParameters` | `boolean` | `false` | ⚠️ **SECURITY RISK** - Include query parameters (actual values) in audit logs. May expose passwords, PII, credit cards. Only enable if logs are encrypted and access-controlled. Recommended: keep `false` for GDPR/HIPAA compliance. |
+| `metadata` | `object\|function` | `undefined` | Additional data to include in every audit entry. **Object:** static values like `{ app: 'api', version: '1.0' }`. **Function:** dynamic values like `() => ({ requestId: getRequestId(), ip: getClientIP() })`. |
+| `enableLogging` | `boolean` | `false` | Log audit entries to console (in addition to `onAudit` callback). |
 
 **Event Callbacks:**
 
@@ -725,11 +725,11 @@ Detects operations affecting many rows - prevents accidents like deleting 100,00
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `bulkThreshold` | `number` | `100` | Threshold for considering operation "bulk" (rows) |
-| `monitorTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types to monitor |
-| `monitorTables` | `string[]` | `[]` (all) | Tables to monitor. Empty = all |
-| `warnOnBulk` | `boolean` | `true` | ⚠️ **Deprecated** - Use `onBulkOperation` callback instead |
-| `enableLogging` | `boolean` | `false` | Auto-log bulk operations |
+| `bulkThreshold` | `number` | `100` | Number of rows affected to consider an operation "bulk". Adjust based on your app: 50 for user-facing tables, 1000+ for analytics tables. Prevents accidental mass operations. |
+| `monitorTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types to monitor. Bulk SELECTs are rarely dangerous (just slow), so usually only monitor data modifications. |
+| `monitorTables` | `string[]` | `[]` (all) | Limit monitoring to specific tables. Example: `['users', 'orders']` to protect critical tables. Empty = monitor all tables. |
+| `warnOnBulk` | `boolean` | `true` | ⚠️ **Deprecated** - Use `onBulkOperation` callback instead for custom handling |
+| `enableLogging` | `boolean` | `false` | Log bulk operation warnings to console with affected row count. |
 
 **Event Callbacks:**
 
@@ -820,8 +820,8 @@ Extracts all table names from any TypeORM query (SELECT, INSERT, UPDATE, DELETE,
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `warnOnEmptyTables` | `boolean` | `false` | Warn when no tables are extracted |
-| `enableLogging` | `boolean` | `false` | Log extracted tables |
+| `warnOnEmptyTables` | `boolean` | `false` | Emit warning when table extraction returns empty array. Useful for debugging extraction logic or catching malformed queries. Usually safe to keep `false` in production. |
+| `enableLogging` | `boolean` | `false` | Log all extracted table names for every query. Verbose - use for debugging table extraction issues. |
 
 **Event Callbacks:**
 
@@ -860,9 +860,9 @@ const tables2 = query.getInvolvedTables();
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `largeResultThreshold` | `number` | `1000` | Threshold for large result set (rows) |
-| `monitorTables` | `string[]` | `[]` (all) | Tables to monitor. Empty = all |
-| `enableLogging` | `boolean` | `false` | Auto-log validation warnings |
+| `largeResultThreshold` | `number` | `1000` | Number of rows to consider a result set "large". Triggers `onLargeResult` callback to suggest pagination. Adjust based on your app: lower for API endpoints (100-500), higher for reports (5000+). |
+| `monitorTables` | `string[]` | `[]` (all) | Limit validation to specific tables. Example: `['users', 'orders']` only checks these tables. Empty = monitor all. Use to focus on tables that should always be paginated. |
+| `enableLogging` | `boolean` | `false` | Log validation warnings (empty/large results) to console. |
 
 **Event Callbacks:**
 
@@ -943,11 +943,11 @@ registerPlugin(QueryModifierPlugin({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `maxJoins` | `number` | `5` | Max joins before warning |
-| `maxTables` | `number` | `10` | Max tables before warning |
-| `warnOnSubqueries` | `boolean` | `false` | Warn on subqueries |
-| `warnOnCTEs` | `boolean` | `false` | Warn on Common Table Expressions |
-| `enableLogging` | `boolean` | `false` | Auto-log complexity warnings |
+| `maxJoins` | `number` | `5` | Maximum number of JOIN clauses before flagging as complex. Queries with many joins are often slow and hard to maintain. Consider denormalization or caching for queries exceeding this. |
+| `maxTables` | `number` | `10` | Maximum number of tables referenced before flagging as complex. High table count suggests overly complex query that may need refactoring. |
+| `warnOnSubqueries` | `boolean` | `false` | Flag queries containing subqueries. Subqueries can be slow (especially correlated ones). Set to `true` to identify candidates for optimization with JOINs or separate queries. |
+| `warnOnCTEs` | `boolean` | `false` | Flag queries with Common Table Expressions (WITH clauses). CTEs can impact performance in some databases. Enable to audit CTE usage. |
+| `enableLogging` | `boolean` | `false` | Log complexity warnings to console with metrics (join count, table count, etc.). |
 
 **Event Callbacks:**
 
