@@ -97,7 +97,7 @@ enableQueryHooks({
 });
 ```
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -107,6 +107,8 @@ enableQueryHooks({
 - Debugging why a plugin isn't working
 - Understanding the hook execution flow
 - Development/testing only (too noisy for production)
+
+> **Note:** This is the only configuration for `enableQueryHooks()`. All other configurations are plugin-specific.
 
 ---
 
@@ -146,7 +148,7 @@ for (const user of users) {  // Loop
 // Total: 101 queries for 100 users!
 ```
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -154,8 +156,13 @@ for (const user of users) {  // Loop
 | `window` | `number` | `100` | Time window in milliseconds to track query patterns |
 | `includeStackTrace` | `boolean` | `true` | Capture stack trace to show where N+1 originated |
 | `ignorePatterns` | `RegExp[]` | `[]` | Regex patterns to ignore (e.g., `/migrations$/i`) |
-| `onNPlusOneDetected` | `function` | `undefined` | Callback when N+1 is detected |
 | `enableLogging` | `boolean` | `false` | Auto-log N+1 warnings to console |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onNPlusOneDetected` | `(context: NPlusOneContext, pattern: QueryPattern)` | Called when N+1 pattern is detected |
 
 **Usage:**
 
@@ -193,7 +200,7 @@ Prevents catastrophic mistakes like `UPDATE users SET role='admin'` (no WHERE = 
 - Migration with `DROP TABLE` ran in production
 - `DELETE FROM orders` without WHERE → Lost 6 months of data
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -205,8 +212,13 @@ Prevents catastrophic mistakes like `UPDATE users SET role='admin'` (no WHERE = 
 | `protectedTables` | `string[]` | `[]` | Tables with extra protection (e.g., `['users', 'payments']`) |
 | `allowForce` | `boolean` | `false` | Allow `/* FORCE_ALLOW */` comment to bypass |
 | `throwOnBlock` | `boolean` | `true` | Throw error when operation is blocked |
-| `onBlocked` | `function` | `undefined` | Callback when operation is blocked |
 | `enableLogging` | `boolean` | `false` | Auto-log blocked operations |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onBlocked` | `(context: PreQueryContext, blocked: BlockedOperation)` | Called when dangerous operation is blocked |
 
 **Usage:**
 
@@ -248,16 +260,21 @@ await queryRunner.query('SELECT ...');
 // ❌ FORGOT queryRunner.release() - connection leaked!
 ```
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `maxConnectionAge` | `number` | `30000` | Max connection age in ms before considered a leak |
 | `warnThreshold` | `number` | `0.8` | Warn when pool usage exceeds this % (0.8 = 80%) |
 | `captureStackTrace` | `boolean` | `true` | Capture where connection was acquired |
-| `onLeak` | `function` | `undefined` | Callback when leak is detected |
-| `onPoolWarning` | `function` | `undefined` | Callback when pool capacity warning |
 | `enableLogging` | `boolean` | `false` | Auto-log leak warnings |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onLeak` | `(leak: ConnectionLeak)` | Called when connection leak is detected |
+| `onPoolWarning` | `(context: ConnectionPoolContext)` | Called when pool capacity warning triggered |
 
 **Usage:**
 
@@ -288,7 +305,7 @@ registerPlugin(ConnectionLeakDetectorPlugin({
 **What it does:**
 Prevents queries from hanging forever and blocking the connection pool.
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -296,8 +313,16 @@ Prevents queries from hanging forever and blocking the connection pool.
 | `timeoutByType` | `Record<string, number>` | `{}` | Override timeout by query type (e.g., `{ 'SELECT': 3000 }`) |
 | `timeoutByTablePattern` | `Record<string, number>` | `{}` | Override by table pattern (e.g., `{ 'report_.*': 30000 }`) |
 | `throwOnTimeout` | `boolean` | `true` | Throw error on timeout |
-| `onTimeout` | `function` | `undefined` | Callback when timeout occurs |
+| `warningThreshold` | `number` | `0.8` | Trigger warning at % of timeout (0.8 = 80%) |
 | `enableLogging` | `boolean` | `false` | Auto-log timeouts |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onTimeout` | `(context: QueryExecutionContext, timeout: number)` | Called when query times out |
+| `onTimeoutWarning` | `(context: QueryExecutionContext, elapsed: number, limit: number)` | Called when query approaches timeout |
+| `onError` | `(context: QueryExecutionContext, error: Error)` | Called when timeout mechanism fails |
 
 **Usage:**
 
@@ -341,15 +366,23 @@ await fetch('https://api.slow-service.com');  // 5 seconds
 await queryRunner.commitTransaction();
 ```
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `maxTransactionDuration` | `number` | `5000` | Max transaction duration in ms |
 | `maxIdleTime` | `number` | `1000` | Max idle time (no queries) in ms |
 | `autoRollback` | `boolean` | `false` | Auto-rollback zombie transactions ⚠️ Use carefully |
-| `onZombieDetected` | `function` | `undefined` | Callback when zombie detected |
 | `enableLogging` | `boolean` | `false` | Auto-log zombie warnings |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onZombieDetected` | `(context: TransactionContext, zombie: ZombieTransaction)` | Called when zombie transaction detected (long-running AND idle) |
+| `onLongRunningTransaction` | `(context: TransactionContext, duration: number)` | Called when transaction exceeds max duration |
+| `onIdleTransaction` | `(context: TransactionContext, idleTime: number)` | Called when transaction is idle too long |
+| `onError` | `(context: TransactionContext \| undefined, error: Error)` | Called when monitoring fails |
 
 **Usage:**
 
@@ -391,7 +424,7 @@ You have 50 places that query users. Which one is slow? You don't know!
 **The Solution:**
 Shows: `Query from: src/services/UserService.ts:45:12 in UserService.findByEmail`
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -399,8 +432,13 @@ Shows: `Query from: src/services/UserService.ts:45:12 in UserService.findByEmail
 | `attachToQueryContext` | `boolean` | `true` | Make source location available to other plugins |
 | `includeFullStackTrace` | `boolean` | `false` | Include complete stack trace |
 | `ignorePaths` | `string[]` | `['node_modules']` | Paths to ignore in stack traces |
-| `onQueryLogged` | `function` | `undefined` | Callback with source location |
 | `enableLogging` | `boolean` | `false` | Auto-log source location |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onQueryLogged` | `(context: QueryContextWithSource, location: SourceLocation)` | Called when query source is traced |
 
 **Usage:**
 
@@ -440,15 +478,20 @@ Automatically runs `EXPLAIN` (or `EXPLAIN ANALYZE`) on slow queries to show you 
 **The Automatic Way:**
 Plugin does it all automatically and logs the execution plan immediately!
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `threshold` | `number` | `1000` | Run EXPLAIN on queries slower than this (ms) |
 | `runAnalyze` | `boolean` | `false` | Run EXPLAIN ANALYZE (actually executes query) ⚠️ |
 | `databaseType` | `string` | `'postgres'` | Database type: `'postgres'`, `'mysql'`, `'mariadb'`, `'sqlite'`, `'mssql'` |
-| `onAnalysis` | `function` | `undefined` | Callback with execution plan |
 | `enableLogging` | `boolean` | `false` | Auto-log execution plans |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onAnalysis` | `(context: QueryExecutionContext, plan: QueryExecutionPlan)` | Called when EXPLAIN analysis completes |
 
 **Usage:**
 
@@ -496,15 +539,21 @@ for (const user of users) {
 }
 ```
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `warnOnLazyLoad` | `boolean` | `true` | Warn when lazy loading is detected |
+| `warnOnLazyLoad` | `boolean` | `true` | ⚠️ **Deprecated** - Use `onLazyLoadDetected` callback instead |
 | `suggestEagerLoading` | `boolean` | `true` | Show code suggestion to fix |
 | `threshold` | `number` | `1` | Warn after N lazy loads of same relation |
-| `onLazyLoadDetected` | `function` | `undefined` | Callback when lazy load detected |
 | `enableLogging` | `boolean` | `false` | Auto-log lazy loading warnings |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onLazyLoadDetected` | `(context: QueryHookContext, relationName: string, count: number)` | Called when lazy loading pattern is detected |
+| `onError` | `(context: QueryHookContext, error: Error)` | Called when detection fails |
 
 **Usage:**
 
@@ -534,14 +583,19 @@ registerPlugin(LazyLoadingDetectorPlugin({
 **What it does:**
 Monitors query performance and detects slow queries.
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `slowQueryThreshold` | `number` | `500` | Threshold in ms for slow query detection |
-| `onSlowQuery` | `function` | `undefined` | Callback when slow query detected |
-| `onMetric` | `function` | `undefined` | Callback for all query completions |
 | `enableLogging` | `boolean` | `false` | Auto-log performance metrics |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onSlowQuery` | `(context: QueryExecutionContext)` | Called when query exceeds slowQueryThreshold |
+| `onMetric` | `(context: QueryExecutionContext)` | Called for all query completions (for custom metrics) |
 
 **Usage:**
 
@@ -573,14 +627,19 @@ registerPlugin(PerformanceMonitorPlugin({
 **What it does:**
 Automatically invalidates cache when `INSERT`, `UPDATE`, or `DELETE` operations occur.
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `onInvalidate` | `function` | **REQUIRED** | Callback to clear your cache (Redis, memory, etc.) |
 | `invalidateOnTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types that trigger invalidation |
 | `monitorTables` | `string[]` | `[]` (all) | Specific tables to monitor. Empty = all tables |
 | `enableLogging` | `boolean` | `false` | Auto-log cache invalidations |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onInvalidate` | `(tables: string[], context: QueryExecutionContext)` | ⚠️ **REQUIRED** - Called to clear your cache (Redis, memory, etc.) |
 
 **Usage:**
 
@@ -607,18 +666,23 @@ registerPlugin(CacheInvalidationPlugin({
 **What it does:**
 Comprehensive audit trail of who did what, when, and on which tables.
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `onAudit` | `function` | **REQUIRED** | Callback to persist audit logs |
-| `getUserId` | `function` | `undefined` | Function to get current user ID |
 | `auditTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types to audit |
 | `auditTables` | `string[]` | `[]` (all) | Tables to audit. Empty = all |
 | `includeSql` | `boolean` | `true` | Include SQL in audit logs |
 | `includeParameters` | `boolean` | `false` | Include parameters (may contain sensitive data) |
 | `metadata` | `object\|function` | `undefined` | Additional metadata to include |
 | `enableLogging` | `boolean` | `false` | Auto-log audit entries |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onAudit` | `(entry: AuditLogEntry)` | ⚠️ **REQUIRED** - Called to persist audit logs |
+| `getUserId` | `() => string \| number \| undefined` | Called to get current user ID |
 
 **Usage:**
 
@@ -657,16 +721,21 @@ registerPlugin(AuditLoggingPlugin({
 **What it does:**
 Detects operations affecting many rows - prevents accidents like deleting 100,000 records.
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `bulkThreshold` | `number` | `100` | Threshold for considering operation "bulk" (rows) |
 | `monitorTypes` | `string[]` | `['INSERT','UPDATE','DELETE']` | Query types to monitor |
 | `monitorTables` | `string[]` | `[]` (all) | Tables to monitor. Empty = all |
-| `warnOnBulk` | `boolean` | `true` | Warn when bulk operation detected |
-| `onBulkOperation` | `function` | `undefined` | Callback when bulk operation detected |
+| `warnOnBulk` | `boolean` | `true` | ⚠️ **Deprecated** - Use `onBulkOperation` callback instead |
 | `enableLogging` | `boolean` | `false` | Auto-log bulk operations |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onBulkOperation` | `(context: QueryResultContext, affectedRows: number)` | Called when operation exceeds bulkThreshold |
 
 **Usage:**
 
@@ -694,13 +763,20 @@ registerPlugin(BulkOperationsPlugin({
 **What it does:**
 Automatically transforms database results to DTOs, removes sensitive data, adds computed fields.
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `transformers` | `Record<string, Function>` | `{}` | Transformers by entity name |
-| `globalTransformer` | `function` | `undefined` | Applied to all results |
 | `enableLogging` | `boolean` | `false` | Auto-log transformations |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `transformers` | `Record<string, TransformerFn>` | Transform results by entity/table name |
+| `globalTransformer` | `(result: any, context: QueryResultContext) => any` | Applied to all results before entity transformers |
+| `onTransformed` | `(context: QueryResultContext, originalResult: any, transformedResult: any)` | Called when result was transformed |
+| `onError` | `(context: QueryResultContext, error: Error)` | Called when transformation fails |
 
 **Usage:**
 
@@ -740,12 +816,21 @@ registerPlugin(QueryResultTransformerPlugin({
 **What it does:**
 Extracts all table names from any TypeORM query (SELECT, INSERT, UPDATE, DELETE, CTEs, subqueries, joins).
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `warnOnEmptyTables` | `boolean` | `false` | Warn when no tables are extracted |
 | `enableLogging` | `boolean` | `false` | Log extracted tables |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onTablesExtracted` | `(context: QueryHookContext, tables: string[])` | Called when tables are successfully extracted |
+| `onEmptyTables` | `(context: QueryHookContext, queryType: string)` | Called when no tables were extracted |
+| `onWarning` | `(context: QueryHookContext, message: string)` | Called for warnings |
+| `onError` | `(context: QueryHookContext, error: Error)` | Called when extraction fails |
 
 **Usage:**
 
@@ -771,15 +856,20 @@ const tables2 = query.getInvolvedTables();
 
 ### **✅ ResultValidator** - Validate query results
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `largeResultThreshold` | `number` | `1000` | Threshold for large result set (rows) |
 | `monitorTables` | `string[]` | `[]` (all) | Tables to monitor. Empty = all |
-| `onEmptyResult` | `function` | `undefined` | Callback when query returns no results |
-| `onLargeResult` | `function` | `undefined` | Callback when result exceeds threshold |
 | `enableLogging` | `boolean` | `false` | Auto-log validation warnings |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onEmptyResult` | `(context: QueryResultContext)` | Called when query returns no results |
+| `onLargeResult` | `(context: QueryResultContext, rowCount: number)` | Called when result exceeds largeResultThreshold |
 
 **Usage:**
 
@@ -802,14 +892,22 @@ registerPlugin(ResultValidatorPlugin({
 
 ### **✏️ QueryModifier** - Modify queries before execution
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `modifySql` | `function` | `undefined` | Modify SQL before execution |
-| `modifyParameters` | `function` | `undefined` | Modify parameters before execution |
-| `shouldExecute` | `function` | `undefined` | Return false to cancel query |
 | `enableLogging` | `boolean` | `false` | Auto-log modifications |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `modifySql` | `(sql: string, context: PreQueryContext) => string` | Modify SQL before execution |
+| `modifyParameters` | `(parameters: any[], context: PreQueryContext) => any[]` | Modify parameters before execution |
+| `shouldExecute` | `(context: PreQueryContext) => boolean` | Return false to cancel query |
+| `onSqlModified` | `(context: PreQueryContext, originalSql: string, modifiedSql: string)` | Called when SQL was modified |
+| `onParametersModified` | `(context: PreQueryContext, originalParams: any[], modifiedParams: any[])` | Called when parameters were modified |
+| `onError` | `(context: PreQueryContext, error: Error)` | Called when modification fails |
 
 **Usage:**
 
@@ -841,7 +939,7 @@ registerPlugin(QueryModifierPlugin({
 
 ### **🔍 QueryComplexity** - Warn on complex queries
 
-**Configuration:**
+**Configuration Options:**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -849,8 +947,13 @@ registerPlugin(QueryModifierPlugin({
 | `maxTables` | `number` | `10` | Max tables before warning |
 | `warnOnSubqueries` | `boolean` | `false` | Warn on subqueries |
 | `warnOnCTEs` | `boolean` | `false` | Warn on Common Table Expressions |
-| `onComplexQuery` | `function` | `undefined` | Callback when complex query detected |
 | `enableLogging` | `boolean` | `false` | Auto-log complexity warnings |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onComplexQuery` | `(context: PreQueryContext, complexity: QueryComplexityInfo)` | Called when query exceeds complexity thresholds |
 
 **Usage:**
 
