@@ -35,40 +35,42 @@
 
 ## 🏗️ **20 Powerful Plugins Included**
 
+> 📚 **Event Callbacks**: All plugins support event callbacks for custom handling. See [PLUGIN_CALLBACKS_REFERENCE.md](./PLUGIN_CALLBACKS_REFERENCE.md) for complete callback documentation.
+
 ### **🔥 Critical Performance & Safety**
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| [🕵️ **NPlusOneDetector**](#nplusonedetector) | Detect N+1 query problems | #1 performance killer - catches 80% of issues |
-| [🛡️ **SafetyGuard**](#safetyguard) | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL |
-| [💧 **ConnectionLeakDetector**](#connectionleakdetector) | Find connection leaks | Prevents pool exhaustion and app crashes |
-| [⏱️ **QueryTimeout**](#querytimeout) | Automatic query timeouts | Prevents queries from hanging forever |
-| [🧟 **IdleTransactionMonitor**](#idletransactionmonitor) | Detect zombie transactions | Prevents deadlocks from idle transactions |
+| Plugin | Purpose | Use Case | Callbacks |
+|--------|---------|----------|-----------|
+| [🕵️ **NPlusOneDetector**](#nplusonedetector) | Detect N+1 query problems | #1 performance killer - catches 80% of issues | `onNPlusOneDetected` |
+| [🛡️ **SafetyGuard**](#safetyguard) | Block dangerous operations | Prevents DELETE/UPDATE without WHERE, blocks DDL | `onBlocked` |
+| [💧 **ConnectionLeakDetector**](#connectionleakdetector) | Find connection leaks | Prevents pool exhaustion and app crashes | `onLeak`, `onPoolWarning` |
+| [⏱️ **QueryTimeout**](#querytimeout) | Automatic query timeouts | Prevents queries from hanging forever | `onTimeout`, `onTimeoutWarning`, `onError` |
+| [🧟 **IdleTransactionMonitor**](#idletransactionmonitor) | Detect zombie transactions | Prevents deadlocks from idle transactions | `onZombieDetected`, `onLongRunningTransaction`, `onIdleTransaction`, `onError` |
 
 ### **🔬 Analysis & Debugging**
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| [📍 **QuerySourceTracer**](#querysourcetracer) | Show where queries originate | CSI: Database - find exact file:line in your code |
-| [🔬 **SlowQueryAnalyzer**](#slowqueryanalyzer) | Auto-run EXPLAIN on slow queries | Automatic query plan analysis |
-| [⚠️ **LazyLoadingDetector**](#lazyloadingdetector) | Detect lazy-loaded relations | Catches hidden N+1 problems |
-| [⚡ **PerformanceMonitor**](#performancemonitor) | Track query execution time | Monitor and optimize performance |
+| Plugin | Purpose | Use Case | Callbacks |
+|--------|---------|----------|-----------|
+| [📍 **QuerySourceTracer**](#querysourcetracer) | Show where queries originate | CSI: Database - find exact file:line in your code | `onQueryLogged` |
+| [🔬 **SlowQueryAnalyzer**](#slowqueryanalyzer) | Auto-run EXPLAIN on slow queries | Automatic query plan analysis | `onAnalysis` |
+| [⚠️ **LazyLoadingDetector**](#lazyloadingdetector) | Detect lazy-loaded relations | Catches hidden N+1 problems | `onLazyLoadDetected`, `onError` |
+| [⚡ **PerformanceMonitor**](#performancemonitor) | Track query execution time | Monitor and optimize performance | `onSlowQuery`, `onMetric` |
 
 ### **🗃️ Data Management**
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| [🗑️ **CacheInvalidation**](#cacheinvalidation) | Auto-invalidate cache on writes | Maintain cache consistency |
-| [📝 **AuditLogging**](#auditlogging) | Track all database operations | Compliance (GDPR, HIPAA), security |
-| [📊 **BulkOperations**](#bulkoperations) | Detect bulk operations | Prevent accidental mass updates |
-| [🔄 **QueryResultTransformer**](#queryresulttransformer) | Transform query results | Auto-convert to DTOs, remove sensitive data |
+| Plugin | Purpose | Use Case | Callbacks |
+|--------|---------|----------|-----------|
+| [🗑️ **CacheInvalidation**](#cacheinvalidation) | Auto-invalidate cache on writes | Maintain cache consistency | `onInvalidate` ⚠️ *required* |
+| [📝 **AuditLogging**](#auditlogging) | Track all database operations | Compliance (GDPR, HIPAA), security | `onAudit` ⚠️ *required*, `getUserId` |
+| [📊 **BulkOperations**](#bulkoperations) | Detect bulk operations | Prevent accidental mass updates | `onBulkOperation` |
+| [🔄 **QueryResultTransformer**](#queryresulttransformer) | Transform query results | Auto-convert to DTOs, remove sensitive data | `transformers`, `globalTransformer`, `onTransformed`, `onError` |
 
 ### **🛠️ Utilities**
-| Plugin | Purpose | Use Case |
-|--------|---------|----------|
-| [🏷️ **TableExtractor**](#tableextractor) | Extract table names from queries | Logging, caching, access control |
-| [✅ **ResultValidator**](#resultvalidator) | Validate query results | Alert on empty results, pagination issues |
-| [✏️ **QueryModifier**](#querymodifier) | Modify queries before execution | Multi-tenancy, query hints, safety |
-| [🔍 **QueryComplexity**](#querycomplexity) | Warn on complex queries | Identify queries needing optimization |
-| [💾 **QueryMetadataRegistry**](#querymetadataregistry) | Store query metadata | Analytics, cross-cutting concerns |
-| [🪵 **QueryLogger**](#querylogger) | Custom query logging | Flexible logging with filters |
+| Plugin | Purpose | Use Case | Callbacks |
+|--------|---------|----------|-----------|
+| [🏷️ **TableExtractor**](#tableextractor) | Extract table names from queries | Logging, caching, access control | `onTablesExtracted`, `onEmptyTables`, `onWarning`, `onError` |
+| [✅ **ResultValidator**](#resultvalidator) | Validate query results | Alert on empty results, pagination issues | `onEmptyResult`, `onLargeResult` |
+| [✏️ **QueryModifier**](#querymodifier) | Modify queries before execution | Multi-tenancy, query hints, safety | `modifySql`, `modifyParameters`, `shouldExecute`, `onSqlModified`, `onParametersModified`, `onError` |
+| [🔍 **QueryComplexity**](#querycomplexity) | Warn on complex queries | Identify queries needing optimization | `onComplexQuery` |
+| [💾 **QueryMetadataRegistry**](#querymetadataregistry) | Store query metadata | Analytics, cross-cutting concerns | *(utility - no callbacks)* |
+| [🪵 **QueryLogger**](#querylogger) | Custom query logging | Flexible logging with filters | `logger`, `filter` |
 
 ---
 

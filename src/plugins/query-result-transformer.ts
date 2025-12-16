@@ -34,6 +34,45 @@ export interface QueryResultTransformerOptions {
   globalTransformer?: TransformerFn;
   
   /**
+   * Callback when a result is transformed (optional)
+   * Triggered after transformation is complete
+   * 
+   * @param context - Query result context
+   * @param originalResult - Result before transformation
+   * @param transformedResult - Result after transformation
+   * 
+   * @example
+   * ```typescript
+   * onTransformed: (context, originalResult, transformedResult) => {
+   *   logger.info('Result transformed', {
+   *     tables: extractTablesFromBuilder(context.builder),
+   *     originalType: typeof originalResult,
+   *     transformedType: typeof transformedResult
+   *   });
+   * }
+   * ```
+   */
+  onTransformed?: (context: QueryResultContext, originalResult: any, transformedResult: any) => void;
+  
+  /**
+   * Callback when transformation fails (optional)
+   * 
+   * @param context - Query result context
+   * @param error - The error that occurred
+   * 
+   * @example
+   * ```typescript
+   * onError: (context, error) => {
+   *   logger.error('Result transformation failed', {
+   *     error,
+   *     tables: extractTablesFromBuilder(context.builder)
+   *   });
+   * }
+   * ```
+   */
+  onError?: (context: QueryResultContext, error: Error) => void;
+  
+  /**
    * Enable console logging for this plugin (default: false)
    */
   enableLogging?: boolean;
@@ -91,6 +130,8 @@ export function QueryResultTransformerPlugin(options: QueryResultTransformerOpti
   const {
     transformers = {},
     globalTransformer,
+    onTransformed,
+    onError,
     enableLogging = false
   } = options;
 
@@ -139,22 +180,63 @@ export function QueryResultTransformerPlugin(options: QueryResultTransformerOpti
     name: 'QueryResultTransformer',
 
     onQueryResult: async (context: QueryResultContext) => {
-      let result = context.result;
+      try {
+        const originalResult = context.result;
+        let result = originalResult;
 
-      // Apply global transformer first
-      if (globalTransformer) {
-        result = await globalTransformer(result, context);
+        // Apply global transformer first
+        if (globalTransformer) {
+          try {
+            result = await globalTransformer(result, context);
+          } catch (error) {
+            if (onError) {
+              onError(context, error as Error);
+            } else if (enableLogging) {
+              console.error('[QueryResultTransformer] Global transformer failed:', error);
+            }
+            throw error;
+          }
+        }
+
+        // Apply entity-specific transformers
+        const tables = extractTablesFromBuilder(context.builder);
+
+        if (tables.length > 0 && Object.keys(transformers).length > 0) {
+          try {
+            result = await transformResult(result, tables, context);
+          } catch (error) {
+            if (onError) {
+              onError(context, error as Error);
+            } else if (enableLogging) {
+              console.error('[QueryResultTransformer] Entity transformer failed:', error);
+            }
+            throw error;
+          }
+        }
+
+        // Trigger onTransformed callback if result was modified
+        if (result !== originalResult && onTransformed) {
+          try {
+            onTransformed(context, originalResult, result);
+          } catch (error) {
+            if (onError) {
+              onError(context, error as Error);
+            } else if (enableLogging) {
+              console.error('[QueryResultTransformer] onTransformed callback failed:', error);
+            }
+          }
+        }
+
+        // Modify the result in context
+        (context as any).result = result;
+      } catch (error) {
+        if (onError) {
+          onError(context, error as Error);
+        } else if (enableLogging) {
+          console.error('[QueryResultTransformer] Transformation failed:', error);
+        }
+        throw error;
       }
-
-      // Apply entity-specific transformers
-      const tables = extractTablesFromBuilder(context.builder);
-
-      if (tables.length > 0 && Object.keys(transformers).length > 0) {
-        result = await transformResult(result, tables, context);
-      }
-
-      // Modify the result in context
-      (context as any).result = result;
     },
 
     onEnable: () => {

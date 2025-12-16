@@ -24,6 +24,61 @@ export interface QueryModifierOptions {
   shouldExecute?: (context: PreQueryContext) => boolean;
   
   /**
+   * Callback when SQL was modified (optional)
+   * Triggered after modifySql changes the query
+   * 
+   * @param context - Query context
+   * @param originalSql - Original SQL before modification
+   * @param newSql - Modified SQL
+   * 
+   * @example
+   * ```typescript
+   * onSqlModified: (context, originalSql, newSql) => {
+   *   logger.info('SQL modified', {
+   *     original: originalSql.substring(0, 100),
+   *     modified: newSql.substring(0, 100)
+   *   });
+   * }
+   * ```
+   */
+  onSqlModified?: (context: PreQueryContext, originalSql: string, newSql: string) => void;
+  
+  /**
+   * Callback when parameters were modified (optional)
+   * Triggered after modifyParameters changes the params
+   * 
+   * @param context - Query context
+   * @param originalParams - Original parameters before modification
+   * @param newParams - Modified parameters
+   * 
+   * @example
+   * ```typescript
+   * onParametersModified: (context, originalParams, newParams) => {
+   *   logger.info('Parameters modified', {
+   *     originalCount: originalParams.length,
+   *     newCount: newParams.length
+   *   });
+   * }
+   * ```
+   */
+  onParametersModified?: (context: PreQueryContext, originalParams: any[], newParams: any[]) => void;
+  
+  /**
+   * Callback when an error occurs during modification (optional)
+   * 
+   * @param context - Query context
+   * @param error - The error that occurred
+   * 
+   * @example
+   * ```typescript
+   * onError: (context, error) => {
+   *   logger.error('Query modification failed', { error, sql: context.sql });
+   * }
+   * ```
+   */
+  onError?: (context: PreQueryContext, error: Error) => void;
+  
+  /**
    * Enable console logging (default: false)
    */
   enableLogging?: boolean;
@@ -85,6 +140,9 @@ export function QueryModifierPlugin(options: QueryModifierOptions = {}): QueryHo
     modifySql,
     modifyParameters,
     shouldExecute,
+    onSqlModified,
+    onParametersModified,
+    onError,
     enableLogging = false
   } = options;
 
@@ -92,43 +150,112 @@ export function QueryModifierPlugin(options: QueryModifierOptions = {}): QueryHo
     name: 'QueryModifier',
 
     onBeforeQuery: (context: PreQueryContext) => {
-      // Check if query should be executed
-      if (shouldExecute) {
-        const shouldRun = shouldExecute(context);
-        if (!shouldRun) {
-          if (enableLogging) {
-            console.warn('[QueryModifier] 🚫 Query execution blocked by shouldExecute callback');
+      try {
+        // Check if query should be executed
+        if (shouldExecute) {
+          try {
+            const shouldRun = shouldExecute(context);
+            if (!shouldRun) {
+              if (enableLogging) {
+                console.warn('[QueryModifier] 🚫 Query execution blocked by shouldExecute callback');
+              }
+              return false;
+            }
+          } catch (error) {
+            if (onError) {
+              onError(context, error as Error);
+            } else if (enableLogging) {
+              console.error('[QueryModifier] shouldExecute callback failed:', error);
+            }
+            throw error;
           }
-          return false;
         }
-      }
 
-      // Modify SQL
-      if (modifySql) {
-        const newSql = modifySql(context);
-        if (newSql && newSql !== context.sql) {
-          if (enableLogging) {
-            console.log('[QueryModifier] ✏️  SQL modified:', {
-              original: context.sql.substring(0, 100) + '...',
-              modified: newSql.substring(0, 100) + '...'
-            });
+        // Modify SQL
+        if (modifySql) {
+          try {
+            const originalSql = context.sql;
+            const newSql = modifySql(context);
+            if (newSql && newSql !== originalSql) {
+              context.setSql(newSql);
+              
+              // Trigger onSqlModified callback
+              if (onSqlModified) {
+                try {
+                  onSqlModified(context, originalSql, newSql);
+                } catch (error) {
+                  if (onError) {
+                    onError(context, error as Error);
+                  } else if (enableLogging) {
+                    console.error('[QueryModifier] onSqlModified callback failed:', error);
+                  }
+                }
+              }
+              
+              if (enableLogging) {
+                console.log('[QueryModifier] ✏️  SQL modified:', {
+                  original: originalSql.substring(0, 100) + '...',
+                  modified: newSql.substring(0, 100) + '...'
+                });
+              }
+            }
+          } catch (error) {
+            if (onError) {
+              onError(context, error as Error);
+            } else if (enableLogging) {
+              console.error('[QueryModifier] modifySql callback failed:', error);
+            }
+            throw error;
           }
-          context.setSql(newSql);
         }
-      }
 
-      // Modify parameters
-      if (modifyParameters) {
-        const newParams = modifyParameters(context);
-        if (newParams && newParams !== context.parameters) {
-          if (enableLogging) {
-            console.log('[QueryModifier] 🔧 Parameters modified');
+        // Modify parameters
+        if (modifyParameters) {
+          try {
+            const originalParams = context.parameters || [];
+            const newParams = modifyParameters(context);
+            if (newParams && newParams !== originalParams) {
+              context.setParameters(newParams);
+              
+              // Trigger onParametersModified callback
+              if (onParametersModified) {
+                try {
+                  onParametersModified(context, originalParams, newParams);
+                } catch (error) {
+                  if (onError) {
+                    onError(context, error as Error);
+                  } else if (enableLogging) {
+                    console.error('[QueryModifier] onParametersModified callback failed:', error);
+                  }
+                }
+              }
+              
+              if (enableLogging) {
+                console.log('[QueryModifier] 🔧 Parameters modified:', {
+                  originalCount: originalParams.length,
+                  newCount: newParams.length
+                });
+              }
+            }
+          } catch (error) {
+            if (onError) {
+              onError(context, error as Error);
+            } else if (enableLogging) {
+              console.error('[QueryModifier] modifyParameters callback failed:', error);
+            }
+            throw error;
           }
-          context.setParameters(newParams);
         }
-      }
 
-      return true; // Allow execution
+        return true; // Allow execution
+      } catch (error) {
+        if (onError) {
+          onError(context, error as Error);
+        } else if (enableLogging) {
+          console.error('[QueryModifier] Query modification failed:', error);
+        }
+        throw error;
+      }
     }
   };
 }

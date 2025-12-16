@@ -47,6 +47,7 @@ export interface IdleTransactionMonitorOptions {
   
   /**
    * Callback when zombie transaction is detected (optional)
+   * A zombie is a transaction that is both long-running AND idle
    * 
    * @param context - Transaction context
    * @param zombie - Zombie transaction details
@@ -57,12 +58,60 @@ export interface IdleTransactionMonitorOptions {
    *   logger.error('Zombie transaction detected', {
    *     duration: zombie.duration,
    *     idleTime: zombie.idleTime,
-   *     queries: zombie.queriesExecuted
+   *     queries: zombie.queriesExecuted,
+   *     severity: zombie.severity
    *   });
    * }
    * ```
    */
   onZombieDetected?: (context: TransactionContext, zombie: ZombieTransaction) => void | Promise<void>;
+  
+  /**
+   * Callback when a transaction exceeds maximum duration (optional)
+   * Triggered when transaction is open too long (regardless of idle state)
+   * 
+   * @param context - Transaction context
+   * @param duration - Current transaction duration in milliseconds
+   * 
+   * @example
+   * ```typescript
+   * onLongRunningTransaction: (context, duration) => {
+   *   logger.warn(`Long transaction: ${duration}ms`);
+   * }
+   * ```
+   */
+  onLongRunningTransaction?: (context: TransactionContext, duration: number) => void | Promise<void>;
+  
+  /**
+   * Callback when a transaction is idle for too long (optional)
+   * Triggered when no queries are executed within the idle time window
+   * 
+   * @param context - Transaction context
+   * @param idleTime - Current idle time in milliseconds
+   * 
+   * @example
+   * ```typescript
+   * onIdleTransaction: (context, idleTime) => {
+   *   logger.warn(`Idle transaction: ${idleTime}ms without queries`);
+   * }
+   * ```
+   */
+  onIdleTransaction?: (context: TransactionContext, idleTime: number) => void | Promise<void>;
+  
+  /**
+   * Callback when an error occurs during monitoring (optional)
+   * 
+   * @param context - Transaction context (may be undefined if error occurred early)
+   * @param error - The error that occurred
+   * 
+   * @example
+   * ```typescript
+   * onError: (context, error) => {
+   *   logger.error('Transaction monitoring failed', { error });
+   * }
+   * ```
+   */
+  onError?: (context: TransactionContext | undefined, error: Error) => void;
   
   /**
    * Enable console logging for this plugin (default: false)
@@ -146,53 +195,105 @@ export function IdleTransactionMonitorPlugin(options: IdleTransactionMonitorOpti
     maxIdleTime = 1000,
     autoRollback = false,
     onZombieDetected,
+    onLongRunningTransaction,
+    onIdleTransaction,
+    onError,
     enableLogging = false
   } = options;
 
   // Track active transactions
   const transactions = new WeakMap<any, TransactionTracker>();
 
-  // Future enhancement: zombie transaction detection
-  // Use onZombieDetected callback when implementing
-  void onZombieDetected;
-
   /**
-   * Check if transaction is a zombie
+   * Check if transaction is a zombie and trigger appropriate callbacks
    */
-  function checkZombie(tracker: TransactionTracker): ZombieTransaction | null {
-    const now = Date.now();
-    const duration = now - tracker.startTime;
-    const idleTime = now - tracker.lastActivityTime;
+  function checkAndNotifyZombie(tracker: TransactionTracker, context: TransactionContext): void {
+    try {
+      const now = Date.now();
+      const duration = now - tracker.startTime;
+      const idleTime = now - tracker.lastActivityTime;
 
-    // Determine if it's a zombie
-    const isLongRunning = duration > maxTransactionDuration;
-    const isIdle = idleTime > maxIdleTime;
+      // Check for long-running transaction
+      if (duration > maxTransactionDuration && onLongRunningTransaction) {
+        try {
+          onLongRunningTransaction(context, duration);
+        } catch (error) {
+          if (onError) {
+            onError(context, error as Error);
+          } else if (enableLogging) {
+            console.error('[IdleTransactionMonitor] onLongRunningTransaction callback failed:', error);
+          }
+        }
+      }
 
-    if (!isLongRunning && !isIdle) {
-      return null;
+      // Check for idle transaction
+      if (idleTime > maxIdleTime && onIdleTransaction) {
+        try {
+          onIdleTransaction(context, idleTime);
+        } catch (error) {
+          if (onError) {
+            onError(context, error as Error);
+          } else if (enableLogging) {
+            console.error('[IdleTransactionMonitor] onIdleTransaction callback failed:', error);
+          }
+        }
+      }
+
+      // Determine if it's a zombie (both long-running AND idle)
+      const isLongRunning = duration > maxTransactionDuration;
+      const isIdle = idleTime > maxIdleTime;
+
+      if (isLongRunning && isIdle) {
+        // Determine severity
+        let severity: 'warning' | 'error' | 'critical' = 'warning';
+        if (duration > maxTransactionDuration * 2 || idleTime > maxIdleTime * 3) {
+          severity = 'critical';
+        } else if (duration > maxTransactionDuration || idleTime > maxIdleTime * 2) {
+          severity = 'error';
+        }
+
+        const zombie: ZombieTransaction = {
+          duration,
+          idleTime,
+          queriesExecuted: tracker.queriesExecuted,
+          severity
+        };
+
+        // Trigger zombie callback
+        if (onZombieDetected) {
+          try {
+            onZombieDetected(context, zombie);
+          } catch (error) {
+            if (onError) {
+              onError(context, error as Error);
+            } else if (enableLogging) {
+              console.error('[IdleTransactionMonitor] onZombieDetected callback failed:', error);
+            }
+          }
+        }
+
+        // Log if logging enabled
+        if (enableLogging) {
+          console.warn(
+            `[IdleTransactionMonitor] 🧟 Zombie transaction detected!\n` +
+            `  Duration: ${duration}ms (max: ${maxTransactionDuration}ms)\n` +
+            `  Idle time: ${idleTime}ms (max: ${maxIdleTime}ms)\n` +
+            `  Queries executed: ${tracker.queriesExecuted}\n` +
+            `  Severity: ${severity.toUpperCase()}`
+          );
+        }
+      }
+    } catch (error) {
+      if (onError) {
+        onError(context, error as Error);
+      } else if (enableLogging) {
+        console.error('[IdleTransactionMonitor] Zombie check failed:', error);
+      }
     }
-
-    // Determine severity
-    let severity: 'warning' | 'error' | 'critical' = 'warning';
-    if (duration > maxTransactionDuration * 2 || idleTime > maxIdleTime * 3) {
-      severity = 'critical';
-    } else if (duration > maxTransactionDuration || idleTime > maxIdleTime * 2) {
-      severity = 'error';
-    }
-
-    return {
-      duration,
-      idleTime,
-      queriesExecuted: tracker.queriesExecuted,
-      severity
-    };
   }
 
   // Periodic zombie checker - will be set in onEnable
   let zombieCheckInterval: NodeJS.Timeout;
-
-  // Future enhancement: use checkZombie for periodic detection
-  void checkZombie;
 
   return {
     name: 'IdleTransactionMonitor',
@@ -213,17 +314,33 @@ export function IdleTransactionMonitorPlugin(options: IdleTransactionMonitorOpti
     },
 
     onQueryStart: (context: QueryExecutionContext) => {
-      // Update activity time when query runs
-      const queryRunner = (context.builder as any).queryRunner;
-      if (!queryRunner) return;
+      try {
+        // Update activity time when query runs
+        const queryRunner = (context.builder as any).queryRunner;
+        if (!queryRunner) return;
 
-      const tracker = transactions.get(queryRunner);
-      if (tracker) {
-        const now = Date.now();
-        const idleTime = now - tracker.lastActivityTime;
-        tracker.totalIdleTime += idleTime;
-        tracker.lastActivityTime = now;
-        tracker.queriesExecuted++;
+        const tracker = transactions.get(queryRunner);
+        if (tracker) {
+          // Check for zombie before updating (to capture the idle state)
+          const transactionContext: TransactionContext = {
+            queryRunner,
+            timestamp: new Date()
+          };
+          checkAndNotifyZombie(tracker, transactionContext);
+
+          // Update tracker
+          const now = Date.now();
+          const idleTime = now - tracker.lastActivityTime;
+          tracker.totalIdleTime += idleTime;
+          tracker.lastActivityTime = now;
+          tracker.queriesExecuted++;
+        }
+      } catch (error) {
+        if (onError) {
+          onError(undefined, error as Error);
+        } else if (enableLogging) {
+          console.error('[IdleTransactionMonitor] onQueryStart monitoring failed:', error);
+        }
       }
     },
 

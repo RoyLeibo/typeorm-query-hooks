@@ -5,7 +5,7 @@ import {
   UpdateQueryBuilder,
   DeleteQueryBuilder
 } from 'typeorm';
-import { QueryHookPlugin } from '../index';
+import { QueryHookPlugin, QueryHookContext } from '../index';
 
 /**
  * Recursively extract table names from a QueryBuilder's internal expressionMap
@@ -209,6 +209,8 @@ export interface TableExtractorOptions {
   /**
    * Show warning when no tables are extracted from a query (default: false)
    * When true, warns about queries that don't have extractable table metadata
+   * 
+   * @deprecated Use onEmptyTables callback instead for custom handling
    */
   warnOnEmptyTables?: boolean;
   
@@ -217,6 +219,69 @@ export interface TableExtractorOptions {
    * When true, the plugin will log extracted table names to console
    */
   enableLogging?: boolean;
+  
+  /**
+   * Callback when tables are extracted from a query (optional)
+   * 
+   * @param tables - Array of extracted table names
+   * @param context - Query context
+   * 
+   * @example
+   * ```typescript
+   * onTablesExtracted: (tables, context) => {
+   *   logger.info(`Query involves tables: ${tables.join(', ')}`);
+   * }
+   * ```
+   */
+  onTablesExtracted?: (tables: string[], context: QueryHookContext) => void;
+  
+  /**
+   * Callback when no tables are extracted from a query (optional)
+   * Use this instead of warnOnEmptyTables for custom warning handling
+   * 
+   * @param context - Query context
+   * 
+   * @example
+   * ```typescript
+   * onEmptyTables: (context) => {
+   *   logger.warn('No tables extracted', {
+   *     sql: context.sql,
+   *     queryType: context.queryType
+   *   });
+   * }
+   * ```
+   */
+  onEmptyTables?: (context: QueryHookContext) => void;
+  
+  /**
+   * Callback when a warning occurs during table extraction (optional)
+   * 
+   * @param message - Warning message
+   * @param context - Query context
+   * 
+   * @example
+   * ```typescript
+   * onWarning: (message, context) => {
+   *   logger.warn(`[TableExtractor] ${message}`);
+   * }
+   * ```
+   */
+  onWarning?: (message: string, context: QueryHookContext) => void;
+  
+  /**
+   * Callback when an error occurs during table extraction (optional)
+   * 
+   * @param error - The error that occurred
+   * @param context - Query context
+   * 
+   * @example
+   * ```typescript
+   * onError: (error, context) => {
+   *   logger.error('Table extraction failed', { error, sql: context.sql });
+   * }
+   * ```
+   */
+  onError?: (error: Error, context: QueryHookContext) => void;
 }
 
 /**
@@ -236,8 +301,12 @@ export interface TableExtractorOptions {
  */
 export function createTableExtractorPlugin(options: TableExtractorOptions = {}): QueryHookPlugin {
   const {
-    warnOnEmptyTables = false, // default false - only warn if explicitly enabled
-    enableLogging = false
+    warnOnEmptyTables = false, // default false - only warn if explicitly enabled (deprecated)
+    enableLogging = false,
+    onTablesExtracted,
+    onEmptyTables,
+    onWarning,
+    onError
   } = options;
 
   return {
@@ -263,33 +332,91 @@ export function createTableExtractorPlugin(options: TableExtractorOptions = {}):
     },
 
     onQueryBuild: (context) => {
-      // Extract tables and notify listeners
-      const tables = extractTablesFromBuilder(context.builder);
-      
-      // Warn if no tables were extracted (if warnings are enabled)
-      if (warnOnEmptyTables && tables.length === 0) {
-        const operationType = context.queryType ? String(context.queryType).toUpperCase() : 'UNKNOWN';
-        console.warn(
-          `[TableExtractor] ⚠️  No tables extracted from ${operationType} query. ` +
-          `This might indicate an issue with table extraction or a raw query without table metadata.`,
-          {
-            queryType: operationType,
-            sqlPreview: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : '')
+      try {
+        // Extract tables and notify listeners
+        const tables = extractTablesFromBuilder(context.builder);
+        
+        // Call onTablesExtracted callback if provided
+        if (onTablesExtracted) {
+          try {
+            onTablesExtracted(tables, context);
+          } catch (err) {
+            if (onError) {
+              onError(err as Error, context);
+            } else if (enableLogging) {
+              console.error('[TableExtractor] onTablesExtracted callback failed:', err);
+            }
           }
-        );
-      }
-
-      if (enableLogging && tables.length > 0) {
-        console.log(`[TableExtractor] Extracted ${tables.length} table(s):`, tables);
-      }
-      
-      tableExtractorListeners.forEach(listener => {
-        try {
-          listener(tables, context.builder, context.sql);
-        } catch (err) {
-          console.warn('[TableExtractorPlugin] Listener failed:', err);
         }
-      });
+        
+        // Handle empty tables
+        if (tables.length === 0) {
+          const operationType = context.queryType ? String(context.queryType).toUpperCase() : 'UNKNOWN';
+          const message = `No tables extracted from ${operationType} query. ` +
+            `This might indicate an issue with table extraction or a raw query without table metadata.`;
+          
+          // Call onEmptyTables callback if provided
+          if (onEmptyTables) {
+            try {
+              onEmptyTables(context);
+            } catch (err) {
+              if (onError) {
+                onError(err as Error, context);
+              } else if (enableLogging) {
+                console.error('[TableExtractor] onEmptyTables callback failed:', err);
+              }
+            }
+          }
+          
+          // Call onWarning callback if provided
+          if (onWarning) {
+            try {
+              onWarning(message, context);
+            } catch (err) {
+              if (onError) {
+                onError(err as Error, context);
+              } else if (enableLogging) {
+                console.error('[TableExtractor] onWarning callback failed:', err);
+              }
+            }
+          }
+          
+          // Deprecated: warnOnEmptyTables (kept for backward compatibility)
+          if (warnOnEmptyTables && !onEmptyTables && !onWarning) {
+            console.warn(
+              `[TableExtractor] ⚠️  ${message}`,
+              {
+                queryType: operationType,
+                sqlPreview: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : '')
+              }
+            );
+          }
+        }
+
+        if (enableLogging && tables.length > 0) {
+          console.log(`[TableExtractor] Extracted ${tables.length} table(s):`, tables);
+        }
+        
+        // Notify global listeners (backward compatibility)
+        tableExtractorListeners.forEach(listener => {
+          try {
+            listener(tables, context.builder, context.sql);
+          } catch (err) {
+            if (onError) {
+              onError(err as Error, context);
+            } else if (enableLogging) {
+              console.warn('[TableExtractor] Global listener failed:', err);
+            }
+          }
+        });
+      } catch (err) {
+        // Handle extraction errors
+        if (onError) {
+          onError(err as Error, context);
+        } else if (enableLogging) {
+          console.error('[TableExtractor] Table extraction failed:', err);
+        }
+      }
     }
   };
 }

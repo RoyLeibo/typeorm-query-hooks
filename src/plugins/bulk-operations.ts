@@ -46,6 +46,8 @@ export interface BulkOperationsOptions {
   /**
    * Warn on bulk operations (default: true)
    * When true, console.warn will be called for bulk operations
+   * 
+   * @deprecated Use onBulkOperation callback instead for custom handling
    */
   warnOnBulk?: boolean;
   
@@ -161,7 +163,18 @@ export function BulkOperationsPlugin(options: BulkOperationsOptions = {}): Query
 
       // Check if this is a bulk operation
       if (affectedRows > bulkThreshold) {
-        if (warnOnBulk) {
+        // Call onBulkOperation callback if provided
+        if (onBulkOperation) {
+          try {
+            await onBulkOperation(context, affectedRows);
+          } catch (error) {
+            console.error(`[BulkOperations] ❌ onBulkOperation callback failed:`, error);
+            throw error; // Re-throw to allow blocking bulk operations
+          }
+        }
+
+        // Deprecated: warnOnBulk (only if no callback provided, for backward compatibility)
+        if (warnOnBulk && !onBulkOperation) {
           console.warn(
             `[BulkOperations] ⚠️  BULK OPERATION DETECTED:`,
             {
@@ -173,15 +186,6 @@ export function BulkOperationsPlugin(options: BulkOperationsOptions = {}): Query
               sqlPreview: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : '')
             }
           );
-        }
-
-        if (onBulkOperation) {
-          try {
-            await onBulkOperation(context, affectedRows);
-          } catch (error) {
-            console.error(`[BulkOperations] ❌ onBulkOperation callback failed:`, error);
-            throw error; // Re-throw to allow blocking bulk operations
-          }
         }
       }
     }
