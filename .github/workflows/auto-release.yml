@@ -13,26 +13,49 @@ jobs:
       pull-requests: read
       
     steps:
+      - name: Check authorization
+        id: auth
+        run: |
+          # Only allow auto-release if the commit author or actor is RoyLeibo
+          COMMIT_AUTHOR="${{ github.event.head_commit.author.username }}"
+          ACTOR="${{ github.actor }}"
+          
+          if [ "$COMMIT_AUTHOR" != "RoyLeibo" ] && [ "$ACTOR" != "RoyLeibo" ]; then
+            echo "⏭️  Skipping auto-release: Not triggered by @RoyLeibo"
+            echo "Commit author: $COMMIT_AUTHOR"
+            echo "Actor: $ACTOR"
+            echo "authorized=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Authorized: Running auto-release"
+            echo "authorized=true" >> $GITHUB_OUTPUT
+          fi
+          
       - uses: actions/checkout@v4
+        if: steps.auth.outputs.authorized == 'true'
         with:
           fetch-depth: 0
           
       - name: Setup Node.js
+        if: steps.auth.outputs.authorized == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
           
       - name: Install dependencies
+        if: steps.auth.outputs.authorized == 'true'
         run: npm ci
         
       - name: Run tests
+        if: steps.auth.outputs.authorized == 'true'
         run: npm test
         
       - name: Build
+        if: steps.auth.outputs.authorized == 'true'
         run: npm run build
         
       - name: Determine version bump
+        if: steps.auth.outputs.authorized == 'true'
         id: version
         run: |
           # Get the last commit message
@@ -74,7 +97,7 @@ jobs:
           echo "Version bump: $BUMP (current: $CURRENT_VERSION)"
           
       - name: Bump version and create tag
-        if: steps.version.outputs.should_release == 'true'
+        if: steps.auth.outputs.authorized == 'true' && steps.version.outputs.should_release == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -98,12 +121,12 @@ jobs:
           fi
           
       - name: Push changes and tags
-        if: steps.version.outputs.should_release == 'true'
+        if: steps.auth.outputs.authorized == 'true' && steps.version.outputs.should_release == 'true'
         run: |
           git push --follow-tags
           
       - name: Create GitHub Release
-        if: steps.version.outputs.should_release == 'true'
+        if: steps.auth.outputs.authorized == 'true' && steps.version.outputs.should_release == 'true'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -116,7 +139,7 @@ jobs:
           prerelease: false
           
       - name: Publish to npm
-        if: steps.version.outputs.should_release == 'true'
+        if: steps.auth.outputs.authorized == 'true' && steps.version.outputs.should_release == 'true'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
