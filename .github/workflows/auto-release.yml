@@ -38,8 +38,24 @@ jobs:
           # Get the last commit message
           COMMIT_MSG=$(git log -1 --pretty=%B)
           CURRENT_VERSION=$(node -p "require('./package.json').version")
+          TAG_NAME="v${CURRENT_VERSION}"
           
-          # Determine version bump based on commit message
+          # Check if version was manually bumped (commit message contains "Bump version")
+          if echo "$COMMIT_MSG" | grep -qiE "(bump|release) version"; then
+            echo "Manual version bump detected"
+            # Check if tag already exists
+            if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
+              echo "Tag $TAG_NAME already exists, skipping release"
+              echo "should_release=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "manual_bump=true" >> $GITHUB_OUTPUT
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "Manual version bump to: $CURRENT_VERSION"
+            exit 0
+          fi
+          
+          # Determine version bump based on conventional commit message
           if echo "$COMMIT_MSG" | grep -qE "^(BREAKING CHANGE:|feat!:|fix!:)"; then
             BUMP="major"
           elif echo "$COMMIT_MSG" | grep -qE "^feat(\(.+\))?:"; then
@@ -53,6 +69,7 @@ jobs:
           fi
           
           echo "bump=$BUMP" >> $GITHUB_OUTPUT
+          echo "manual_bump=false" >> $GITHUB_OUTPUT
           echo "should_release=true" >> $GITHUB_OUTPUT
           echo "Version bump: $BUMP (current: $CURRENT_VERSION)"
           
@@ -62,12 +79,23 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Bump version
-          npm version ${{ steps.version.outputs.bump }} -m "chore: release v%s [skip ci]"
-          
-          # Get new version
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          # Check if this was a manual bump
+          if [ "${{ steps.version.outputs.manual_bump }}" = "true" ]; then
+            # Manual bump - just create the tag for the current version
+            CURRENT_VERSION=$(node -p "require('./package.json').version")
+            TAG_NAME="v${CURRENT_VERSION}"
+            
+            # Create tag
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+            echo "NEW_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          else
+            # Automatic bump - use npm version
+            npm version ${{ steps.version.outputs.bump }} -m "chore: release v%s [skip ci]"
+            
+            # Get new version
+            NEW_VERSION=$(node -p "require('./package.json').version")
+            echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          fi
           
       - name: Push changes and tags
         if: steps.version.outputs.should_release == 'true'
