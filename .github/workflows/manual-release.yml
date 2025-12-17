@@ -61,11 +61,24 @@ jobs:
           
       - name: Create and push tag
         run: |
+          TAG_NAME="v${{ steps.version.outputs.version }}"
+          
+          # Check if tag already exists locally or remotely
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️  Tag $TAG_NAME already exists locally, deleting it first"
+            git tag -d "$TAG_NAME"
+          fi
+          
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME$"; then
+            echo "⚠️  Tag $TAG_NAME already exists on remote, deleting it first"
+            git push --delete origin "$TAG_NAME"
+          fi
+          
           # Create an annotated tag for the new version
-          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
           
           # Push only the tag (this will trigger the Release workflow)
-          git push origin "v${{ steps.version.outputs.version }}"
+          git push origin "$TAG_NAME"
           
       - name: Create PR for version bump
         uses: peter-evans/create-pull-request@v5
