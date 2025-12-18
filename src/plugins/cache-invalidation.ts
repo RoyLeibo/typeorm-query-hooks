@@ -1,5 +1,5 @@
-import { QueryHookPlugin, QueryExecutionContext } from '../index';
-import { extractTablesFromBuilder } from './table-extractor';
+import { QueryHookPlugin, QueryExecutionContext, RawQueryContext } from '../index';
+import { extractTablesFromBuilder, extractTablesFromSQL } from './table-extractor';
 
 /**
  * Options for CacheInvalidationPlugin
@@ -140,6 +140,71 @@ export function CacheInvalidationPlugin(options: CacheInvalidationOptions): Quer
         }
       } catch (error) {
         console.error(`[CacheInvalidation] ❌ Failed to invalidate cache:`, error);
+      }
+    },
+
+    // Monitor raw SQL queries for cache invalidation
+    onRawQueryComplete: async (context: RawQueryContext & { executionTime: number; result?: any }) => {
+      try {
+        // Determine query type from SQL
+        const sql = context.sql.toUpperCase().trim();
+        let queryType: string | undefined;
+        
+        if (sql.startsWith('INSERT')) {
+          queryType = 'INSERT';
+        } else if (sql.startsWith('UPDATE')) {
+          queryType = 'UPDATE';
+        } else if (sql.startsWith('DELETE')) {
+          queryType = 'DELETE';
+        } else if (sql.startsWith('SELECT')) {
+          queryType = 'SELECT';
+        }
+        
+        // Only invalidate for specified query types
+        if (!queryType || !invalidateOnTypes.some(type => type.toUpperCase() === queryType)) {
+          return;
+        }
+
+          // Extract tables from raw SQL
+        const tables = extractTablesFromSQL(context.sql);
+        
+        // Filter to monitored tables if specified
+        const tablesToInvalidate = monitorTables.length > 0
+          ? tables.filter((table: string) => monitorTables.includes(table))
+          : tables;
+
+        if (tablesToInvalidate.length === 0) {
+          return;
+        }
+
+        if (enableLogging) {
+          console.log(`[CacheInvalidation] 🗑️  Invalidating cache for tables (raw SQL):`, tablesToInvalidate, {
+            queryType,
+            sql: context.sql.substring(0, 100) + '...'
+          });
+        }
+
+        // Create pseudo-context for callback
+        const pseudoContext: QueryExecutionContext = {
+          builder: null as any,
+          sql: context.sql,
+          timestamp: context.timestamp,
+          parameters: context.parameters,
+          executionTime: context.executionTime,
+          methodName: 'query'
+        };
+
+        try {
+          await onInvalidate(tablesToInvalidate, pseudoContext);
+          
+          if (enableLogging) {
+            console.log(`[CacheInvalidation] ✅ Cache invalidated successfully (raw SQL)`);
+          }
+        } catch (error) {
+          console.error(`[CacheInvalidation] ❌ Failed to invalidate cache (raw SQL):`, error);
+        }
+      } catch (error) {
+        console.error('[CacheInvalidation] Error in onRawQueryComplete:', error);
       }
     }
   };

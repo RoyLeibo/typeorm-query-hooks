@@ -1,5 +1,5 @@
-import { QueryHookPlugin, PreQueryContext } from '../index';
-import { extractTablesFromBuilder } from './table-extractor';
+import { QueryHookPlugin, PreQueryContext, RawQueryContext } from '../index';
+import { extractTablesFromBuilder, extractTablesFromSQL } from './table-extractor';
 
 /**
  * Blocked operation details
@@ -343,16 +343,128 @@ export function SafetyGuardPlugin(options: SafetyGuardOptions = {}): QueryHookPl
       return true;
     },
 
+    // Monitor raw SQL queries (DDL, migrations, dataSource.query())
+    onRawQuery: (context: RawQueryContext): void => {
+      try {
+        const sql = context.sql.toUpperCase();
+        const tables = extractTablesFromSQL(context.sql);
+        
+        // Check for force flag
+        if (hasForceFlag(context.sql)) {
+          if (enableLogging) {
+            console.warn('[SafetyGuard] ⚠️  FORCE_ALLOW flag detected in raw SQL - bypassing safety checks');
+          }
+          return; // Allow
+        }
+
+        // Check if query affects protected tables
+        const affectsProtectedTable = protectedTables.length > 0 && 
+          tables.some((table: string) => protectedTables.includes(table));
+
+        // Create a pseudo-context for blockOperation
+        const pseudoContext: PreQueryContext = {
+          builder: null as any,
+          sql: context.sql,
+          timestamp: context.timestamp,
+          parameters: context.parameters,
+          setSql: () => {},
+          setParameters: () => {}
+        };
+
+        // Check for DDL operations
+        if (blockDDL && (
+          sql.includes('CREATE TABLE') ||
+          sql.includes('CREATE DATABASE') ||
+          sql.includes('CREATE INDEX') ||
+          sql.includes('ALTER TABLE') ||
+          sql.includes('ALTER DATABASE') ||
+          (blockDrop && (sql.includes('DROP TABLE') || sql.includes('DROP DATABASE') || sql.includes('DROP INDEX')))
+        )) {
+          blockOperation(
+            pseudoContext,
+            'DDL',
+            'DDL operations (CREATE/ALTER/DROP) are blocked in this environment (raw SQL)',
+            'critical'
+          );
+          throw new Error('🛑 SafetyGuard: DDL operations blocked in raw SQL');
+        }
+
+        // Check for TRUNCATE
+        if (blockTruncate && sql.includes('TRUNCATE')) {
+          blockOperation(
+            pseudoContext,
+            'TRUNCATE',
+            'TRUNCATE operations are blocked - they delete all data (raw SQL)',
+            'critical'
+          );
+          throw new Error('🛑 SafetyGuard: TRUNCATE blocked in raw SQL');
+        }
+
+        // Check for DROP (if not caught by blockDDL)
+        if (blockDrop && !blockDDL && sql.includes('DROP')) {
+          blockOperation(
+            pseudoContext,
+            'DROP',
+            'DROP operations are blocked (raw SQL)',
+            'critical'
+          );
+          throw new Error('🛑 SafetyGuard: DROP blocked in raw SQL');
+        }
+
+        // Check UPDATE without WHERE
+        if (requireWhereClause && sql.includes('UPDATE') && !hasWhereClause(sql)) {
+          const severity = affectsProtectedTable ? 'critical' : 'error';
+          blockOperation(
+            pseudoContext,
+            'UPDATE',
+            'UPDATE without WHERE clause - would update ALL rows (raw SQL)' +
+            (affectsProtectedTable ? ` (affects protected table: ${tables.join(', ')})` : ''),
+            severity
+          );
+          throw new Error('🛑 SafetyGuard: UPDATE without WHERE clause in raw SQL');
+        }
+
+        // Check DELETE without WHERE
+        if (requireWhereClause && sql.includes('DELETE') && !hasWhereClause(sql)) {
+          const severity = affectsProtectedTable ? 'critical' : 'error';
+          blockOperation(
+            pseudoContext,
+            'DELETE',
+            'DELETE without WHERE clause - would delete ALL rows (raw SQL)' +
+            (affectsProtectedTable ? ` (affects protected table: ${tables.join(', ')})` : ''),
+            severity
+          );
+          throw new Error('🛑 SafetyGuard: DELETE without WHERE clause in raw SQL');
+        }
+
+        // If all checks passed and logging is enabled
+        if (enableLogging) {
+          console.log('[SafetyGuard] ✅ Raw SQL passed safety checks', {
+            sql: context.sql.substring(0, 100) + '...',
+            tables
+          });
+        }
+      } catch (error) {
+        // If it's an intentional block (our thrown errors), re-throw it
+        if (error instanceof Error && error.message.includes('🛑 SafetyGuard:')) {
+          throw error; // Re-throw intentional blocks
+        }
+        // Otherwise, log unexpected errors and allow the query
+        console.error('[SafetyGuard] Unexpected error in onRawQuery:', error);
+      }
+    },
+
     onEnable: () => {
       if (enableLogging) {
-        console.log('[SafetyGuard] 🛡️  Production safety enabled', {
+        console.log('[SafetyGuard] 🛡️  Production safety enabled (QueryBuilder + Raw SQL)', {
           environment: currentEnv,
           blockDDL,
           requireWhereClause,
           blockTruncate,
           blockDrop,
           protectedTables: protectedTables.length > 0 ? protectedTables : 'none',
-          allowForce
+          allowForce,
+          rawSQLMonitoring: '✅ Enabled'
         });
       }
     }

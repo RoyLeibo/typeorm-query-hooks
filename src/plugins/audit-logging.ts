@@ -1,5 +1,5 @@
-import { QueryHookPlugin, QueryExecutionContext } from '../index';
-import { extractTablesFromBuilder } from './table-extractor';
+import { QueryHookPlugin, QueryExecutionContext, RawQueryContext } from '../index';
+import { extractTablesFromBuilder, extractTablesFromSQL } from './table-extractor';
 
 /**
  * Audit log entry structure
@@ -258,6 +258,158 @@ export function AuditLoggingPlugin(options: AuditLoggingOptions): QueryHookPlugi
         await onAudit(entry);
       } catch (error) {
         console.error(`[AuditLogging] ❌ Failed to log failed query audit entry:`, error);
+      }
+    },
+
+    // Audit raw SQL queries
+    onRawQueryComplete: async (context: RawQueryContext & { executionTime: number; result?: any }) => {
+      try {
+        // Determine query type from SQL
+        const sql = context.sql.toUpperCase().trim();
+        let queryType: string;
+      
+      if (sql.startsWith('INSERT')) {
+        queryType = 'INSERT';
+      } else if (sql.startsWith('UPDATE')) {
+        queryType = 'UPDATE';
+      } else if (sql.startsWith('DELETE')) {
+        queryType = 'DELETE';
+      } else if (sql.startsWith('SELECT')) {
+        queryType = 'SELECT';
+      } else if (sql.startsWith('CREATE')) {
+        queryType = 'CREATE';
+      } else if (sql.startsWith('ALTER')) {
+        queryType = 'ALTER';
+      } else if (sql.startsWith('DROP')) {
+        queryType = 'DROP';
+      } else if (sql.startsWith('TRUNCATE')) {
+        queryType = 'TRUNCATE';
+      } else {
+        queryType = 'UNKNOWN';
+      }
+      
+      // Only audit specified query types
+      if (!auditTypes.some(type => type.toUpperCase() === queryType)) {
+        return;
+      }
+
+      // Extract tables from raw SQL
+      const tables = extractTablesFromSQL(context.sql);
+      
+      // Filter to audited tables if specified
+      const tablesToAudit = auditTables.length > 0
+        ? tables.filter((table: string) => auditTables.includes(table))
+        : tables;
+
+      if (tablesToAudit.length === 0) {
+        return;
+      }
+
+      // Build audit log entry
+      const entry: AuditLogEntry = {
+        timestamp: context.timestamp,
+        userId: getUserId ? getUserId() : undefined,
+        action: queryType,
+        tables: tablesToAudit,
+        sql: includeSql ? context.sql : '[SQL REDACTED]',
+        parameters: includeParameters ? context.parameters : undefined,
+        executionTime: context.executionTime,
+        success: true,
+        metadata: typeof metadata === 'function' ? metadata() : metadata
+      };
+
+      if (enableLogging) {
+        console.log(`[AuditLogging] 📝 Audit log (raw SQL):`, {
+          userId: entry.userId,
+          action: entry.action,
+          tables: entry.tables,
+          executionTime: entry.executionTime
+        });
+      }
+
+        try {
+          await onAudit(entry);
+        } catch (error) {
+          console.error(`[AuditLogging] ❌ Failed to log audit entry (raw SQL):`, error);
+        }
+      } catch (error) {
+        console.error('[AuditLogging] Error in onRawQueryComplete:', error);
+      }
+    },
+
+    onRawQueryError: async (context: RawQueryContext & { error: Error }) => {
+      try {
+        // Determine query type from SQL
+        const sql = context.sql.toUpperCase().trim();
+        let queryType: string;
+      
+      if (sql.startsWith('INSERT')) {
+        queryType = 'INSERT';
+      } else if (sql.startsWith('UPDATE')) {
+        queryType = 'UPDATE';
+      } else if (sql.startsWith('DELETE')) {
+        queryType = 'DELETE';
+      } else if (sql.startsWith('SELECT')) {
+        queryType = 'SELECT';
+      } else if (sql.startsWith('CREATE')) {
+        queryType = 'CREATE';
+      } else if (sql.startsWith('ALTER')) {
+        queryType = 'ALTER';
+      } else if (sql.startsWith('DROP')) {
+        queryType = 'DROP';
+      } else if (sql.startsWith('TRUNCATE')) {
+        queryType = 'TRUNCATE';
+      } else {
+        queryType = 'UNKNOWN';
+      }
+      
+      // Only audit specified query types
+      if (!auditTypes.some(type => type.toUpperCase() === queryType)) {
+        return;
+      }
+
+      // Extract tables from raw SQL
+      const tables = extractTablesFromSQL(context.sql);
+      
+      // Filter to audited tables if specified
+      const tablesToAudit = auditTables.length > 0
+        ? tables.filter((table: string) => auditTables.includes(table))
+        : tables;
+
+      if (tablesToAudit.length === 0) {
+        return;
+      }
+
+      // Build audit log entry for failed query
+      const entry: AuditLogEntry = {
+        timestamp: context.timestamp,
+        userId: getUserId ? getUserId() : undefined,
+        action: queryType,
+        tables: tablesToAudit,
+        sql: includeSql ? context.sql : '[SQL REDACTED]',
+        parameters: includeParameters ? context.parameters : undefined,
+        executionTime: undefined,
+        success: false,
+        error: context.error.message,
+        metadata: typeof metadata === 'function' ? metadata() : metadata
+      };
+
+      if (enableLogging) {
+        console.error(`[AuditLogging] 📝 Audit log (raw SQL failed):`, {
+          userId: entry.userId,
+          action: entry.action,
+          tables: entry.tables,
+          error: entry.error
+        });
+      }
+
+        try {
+          await onAudit(entry);
+        } catch (error) {
+          console.error(`[AuditLogging] ❌ Failed to log failed query audit entry (raw SQL):`, error);
+        }
+      } catch (error) {
+        console.error('[AuditLogging] Error in onRawQueryError:', error);
       }
     }
   };

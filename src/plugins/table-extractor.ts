@@ -62,121 +62,140 @@ export function extractTablesFromSQL(sql: string): string[] {
  * @returns Array of table names involved in the query
  */
 export function extractTablesFromBuilder(builder: QueryBuilder<any>): string[] {
-  const tables = new Set<string>();
-  const expressionMap = (builder as any).expressionMap;
+  // Wrap entire function in try-catch to ensure we never crash the application
+  try {
+    const tables = new Set<string>();
+    const expressionMap = (builder as any).expressionMap;
 
-  if (!expressionMap) {
-    return [];
-  }
+    if (!expressionMap) {
+      return [];
+    }
 
-  // Helper function to extract table name from an alias object
-  const extractTableFromAlias = (alias: any) => {
-    if (!alias) return;
-    
-    if (alias.metadata?.tableName) {
-      tables.add(alias.metadata.tableName);
-    } else if (alias.tablePath) {
-      tables.add(alias.tablePath);
-    } else if (alias.tableName) {
-      tables.add(alias.tableName);
-    } else if (alias.target) {
-      // Handle entity constructor references
-      if (typeof alias.target === 'function' && alias.target.name) {
-        // Try to get metadata from the connection
-        const connection = (builder as any).connection;
-        if (connection && connection.entityMetadatas) {
-          const metadata = connection.entityMetadatas.find((m: any) => m.target === alias.target);
-          if (metadata?.tableName) {
-            tables.add(metadata.tableName);
+    // Helper function to extract table name from an alias object
+    const extractTableFromAlias = (alias: any) => {
+      if (!alias) return;
+      
+      // Try to get metadata - wrap in try-catch because TypeORM's getter
+      // throws an error for dummy aliases (used in EXISTS queries, subqueries, etc.)
+      try {
+        if (alias.metadata?.tableName) {
+          tables.add(alias.metadata.tableName);
+          return; // Success, exit early
+        }
+      } catch (error) {
+        // Alias doesn't have valid entity metadata (e.g., dummy_table for EXISTS queries)
+        // This is fine, continue to fallback methods
+      }
+      
+      // Fallback methods for extracting table name
+      if (alias.tablePath) {
+        tables.add(alias.tablePath);
+      } else if (alias.tableName) {
+        tables.add(alias.tableName);
+      } else if (alias.target) {
+        // Handle entity constructor references
+        if (typeof alias.target === 'function' && alias.target.name) {
+          // Try to get metadata from the connection
+          const connection = (builder as any).connection;
+          if (connection && connection.entityMetadatas) {
+            const metadata = connection.entityMetadatas.find((m: any) => m.target === alias.target);
+            if (metadata?.tableName) {
+              tables.add(metadata.tableName);
+            }
           }
         }
       }
+    };
+
+    // 1. Main Table (FROM / INTO / UPDATE / DELETE)
+    if (expressionMap.mainAlias) {
+      extractTableFromAlias(expressionMap.mainAlias);
     }
-  };
 
-  // 1. Main Table (FROM / INTO / UPDATE / DELETE)
-  if (expressionMap.mainAlias) {
-    extractTableFromAlias(expressionMap.mainAlias);
-  }
+    // 2. All Aliases (includes FROM and additional sources)
+    if (expressionMap.aliases && Array.isArray(expressionMap.aliases)) {
+      expressionMap.aliases.forEach((alias: any) => {
+        extractTableFromAlias(alias);
+      });
+    }
 
-  // 2. All Aliases (includes FROM and additional sources)
-  if (expressionMap.aliases && Array.isArray(expressionMap.aliases)) {
-    expressionMap.aliases.forEach((alias: any) => {
-      extractTableFromAlias(alias);
-    });
-  }
+    // 3. Joins (LEFT JOIN, INNER JOIN, RIGHT JOIN, FULL JOIN)
+    if (expressionMap.joinAttributes && Array.isArray(expressionMap.joinAttributes)) {
+      expressionMap.joinAttributes.forEach((join: any) => {
+        extractTableFromAlias(join);
+        
+        // Also check if join has an alias property
+        if (join.alias) {
+          extractTableFromAlias(join.alias);
+        }
+      });
+    }
 
-  // 3. Joins (LEFT JOIN, INNER JOIN, RIGHT JOIN, FULL JOIN)
-  if (expressionMap.joinAttributes && Array.isArray(expressionMap.joinAttributes)) {
-    expressionMap.joinAttributes.forEach((join: any) => {
-      extractTableFromAlias(join);
-      
-      // Also check if join has an alias property
-      if (join.alias) {
-        extractTableFromAlias(join.alias);
+    // 4. Relation metadata (specific relation query cases)
+    // Note: relationMetadata is only available on SELECT queries
+    try {
+      if (expressionMap.relationMetadata?.entityMetadata?.tableName) {
+        tables.add(expressionMap.relationMetadata.entityMetadata.tableName);
       }
-    });
-  }
-
-  // 4. Relation metadata (specific relation query cases)
-  // Note: relationMetadata is only available on SELECT queries
-  try {
-    if (expressionMap.relationMetadata?.entityMetadata?.tableName) {
-      tables.add(expressionMap.relationMetadata.entityMetadata.tableName);
+    } catch (error) {
+      // Ignore errors accessing relationMetadata on non-SELECT queries
     }
+
+    // 5. Common Table Expressions (CTEs) - WITH clauses
+    if (expressionMap.commonTableExpressions && Array.isArray(expressionMap.commonTableExpressions)) {
+      expressionMap.commonTableExpressions.forEach((cte: any) => {
+        // CTE alias is the virtual table name
+        if (cte.alias || cte.name) {
+          tables.add(cte.alias || cte.name);
+        }
+        
+        // If CTE has a queryBuilder, recursively extract tables
+        if (cte.queryBuilder) {
+          const cteTables = extractTablesFromBuilder(cte.queryBuilder);
+          cteTables.forEach(t => tables.add(t));
+        }
+      });
+    }
+
+    // 6. Subqueries in SELECT, WHERE, FROM, etc.
+    // Check for subQuery in various places
+    if (expressionMap.selects && Array.isArray(expressionMap.selects)) {
+      expressionMap.selects.forEach((select: any) => {
+        if (select.queryBuilder) {
+          const subTables = extractTablesFromBuilder(select.queryBuilder);
+          subTables.forEach(t => tables.add(t));
+        }
+      });
+    }
+
+    // 7. INSERT from SELECT
+    if (expressionMap.insertQueryBuilder) {
+      const insertTables = extractTablesFromBuilder(expressionMap.insertQueryBuilder);
+      insertTables.forEach(t => tables.add(t));
+    }
+
+    // 8. Subqueries in WHERE/HAVING conditions
+    if (expressionMap.wheres && Array.isArray(expressionMap.wheres)) {
+      expressionMap.wheres.forEach((where: any) => {
+        if (where.queryBuilder) {
+          const whereTables = extractTablesFromBuilder(where.queryBuilder);
+          whereTables.forEach(t => tables.add(t));
+        }
+      });
+    }
+
+    // 9. Additional FROM sources (less common but possible)
+    if (expressionMap.fromExpression) {
+      extractTableFromAlias(expressionMap.fromExpression);
+    }
+
+    return Array.from(tables);
   } catch (error) {
-    // Ignore errors accessing relationMetadata on non-SELECT queries
+    // If anything goes wrong, log the error and return empty array
+    // This ensures the library doesn't crash, just returns no tables
+    console.error('[TableExtractor] Error extracting tables from QueryBuilder:', error);
+    return [];
   }
-
-  // 5. Common Table Expressions (CTEs) - WITH clauses
-  if (expressionMap.commonTableExpressions && Array.isArray(expressionMap.commonTableExpressions)) {
-    expressionMap.commonTableExpressions.forEach((cte: any) => {
-      // CTE alias is the virtual table name
-      if (cte.alias || cte.name) {
-        tables.add(cte.alias || cte.name);
-      }
-      
-      // If CTE has a queryBuilder, recursively extract tables
-      if (cte.queryBuilder) {
-        const cteTables = extractTablesFromBuilder(cte.queryBuilder);
-        cteTables.forEach(t => tables.add(t));
-      }
-    });
-  }
-
-  // 6. Subqueries in SELECT, WHERE, FROM, etc.
-  // Check for subQuery in various places
-  if (expressionMap.selects && Array.isArray(expressionMap.selects)) {
-    expressionMap.selects.forEach((select: any) => {
-      if (select.queryBuilder) {
-        const subTables = extractTablesFromBuilder(select.queryBuilder);
-        subTables.forEach(t => tables.add(t));
-      }
-    });
-  }
-
-  // 7. INSERT from SELECT
-  if (expressionMap.insertQueryBuilder) {
-    const insertTables = extractTablesFromBuilder(expressionMap.insertQueryBuilder);
-    insertTables.forEach(t => tables.add(t));
-  }
-
-  // 8. Subqueries in WHERE/HAVING conditions
-  if (expressionMap.wheres && Array.isArray(expressionMap.wheres)) {
-    expressionMap.wheres.forEach((where: any) => {
-      if (where.queryBuilder) {
-        const whereTables = extractTablesFromBuilder(where.queryBuilder);
-        whereTables.forEach(t => tables.add(t));
-      }
-    });
-  }
-
-  // 9. Additional FROM sources (less common but possible)
-  if (expressionMap.fromExpression) {
-    extractTableFromAlias(expressionMap.fromExpression);
-  }
-
-  return Array.from(tables);
 }
 
 /**

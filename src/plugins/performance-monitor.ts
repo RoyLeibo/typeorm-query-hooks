@@ -1,4 +1,4 @@
-import { QueryHookPlugin, QueryExecutionContext } from '../index';
+import { QueryHookPlugin, QueryExecutionContext, RawQueryContext } from '../index';
 
 /**
  * Options for PerformanceMonitorPlugin
@@ -92,6 +92,60 @@ export function PerformanceMonitorPlugin(options: PerformanceMonitorOptions = {}
           error: context.error.message,
           sql: context.sql.substring(0, 200)
         });
+      }
+    },
+
+    // Monitor raw SQL queries
+    onRawQueryComplete: (context: RawQueryContext & { executionTime: number }) => {
+      try {
+        if (enableLogging) {
+          console.log(`[PerformanceMonitor] Raw SQL completed in ${context.executionTime}ms`);
+        }
+
+        // Create a pseudo-context for callbacks
+        const pseudoContext: QueryExecutionContext = {
+          builder: null as any,
+          sql: context.sql,
+          timestamp: context.timestamp,
+          parameters: context.parameters,
+          executionTime: context.executionTime,
+          methodName: 'query' // Raw SQL via dataSource.query()
+        };
+
+        // Call custom metric callback
+        if (onMetric) {
+          onMetric(pseudoContext);
+        }
+
+        // Check if this is a slow query based on threshold
+        if (context.executionTime > slowQueryThreshold) {
+          if (enableLogging) {
+            console.warn(`[PerformanceMonitor] 🐌 SLOW RAW SQL (${context.executionTime}ms):`, {
+              sql: context.sql.substring(0, 200) + (context.sql.length > 200 ? '...' : ''),
+              threshold: `${slowQueryThreshold}ms`
+            });
+          }
+
+          // Call custom slow query callback
+          if (onSlowQuery) {
+            onSlowQuery(pseudoContext);
+          }
+        }
+      } catch (error) {
+        console.error('[PerformanceMonitor] Error in onRawQueryComplete:', error);
+      }
+    },
+
+    onRawQueryError: (context: RawQueryContext & { error: Error }) => {
+      try {
+        if (enableLogging) {
+          console.error(`[PerformanceMonitor] ❌ Raw SQL failed:`, {
+            error: context.error.message,
+            sql: context.sql.substring(0, 200)
+          });
+        }
+      } catch (error) {
+        console.error('[PerformanceMonitor] Error in onRawQueryError:', error);
       }
     }
   };
