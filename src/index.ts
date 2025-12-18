@@ -4,7 +4,8 @@ import {
   UpdateQueryBuilder,
   DeleteQueryBuilder,
   QueryBuilder,
-  QueryRunner
+  QueryRunner,
+  DataSource
 } from 'typeorm';
 import { queryContextStore } from './context-store';
 import { extractTablesFromBuilder } from './plugins/table-extractor';
@@ -77,6 +78,17 @@ export interface TransactionCompleteContext extends TransactionContext {
  */
 export interface TransactionErrorContext extends TransactionCompleteContext {
   error: Error;
+}
+
+/**
+ * Context for raw SQL queries (executed via QueryRunner)
+ * These queries bypass QueryBuilder and include DDL, raw SQL, migrations, etc.
+ */
+export interface RawQueryContext {
+  sql: string;
+  parameters?: any[];
+  timestamp: Date;
+  queryRunner: QueryRunner;
 }
 
 /**
@@ -164,6 +176,24 @@ export interface QueryHookPlugin {
    * Called when a query returns a large result set (threshold configurable)
    */
   onLargeResult?: (context: QueryResultContext) => void;
+
+  // === Raw Query Hooks ===
+  
+  /**
+   * Called when a raw SQL query is executed via QueryRunner
+   * This captures DDL, migrations, raw SQL, and other queries that bypass QueryBuilder
+   */
+  onRawQuery?: (context: RawQueryContext) => void;
+
+  /**
+   * Called when a raw SQL query completes
+   */
+  onRawQueryComplete?: (context: RawQueryContext & { executionTime: number; result?: any }) => void;
+
+  /**
+   * Called when a raw SQL query fails
+   */
+  onRawQueryError?: (context: RawQueryContext & { error: Error }) => void;
 
   // === Transaction Hooks ===
   
@@ -591,24 +621,119 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
 }
 
 /**
- * Patch QueryRunner methods to enable transaction hooks
+ * Patch QueryRunner to capture raw SQL queries (DDL, migrations, etc.)
+ * This patches DataSource.createQueryRunner() to intercept QueryRunner creation
  */
 function patchTransactionHooks(): void {
   try {
-    // Note: QueryRunner is imported at the top
+    // Patch DataSource.prototype.createQueryRunner to intercept QueryRunner creation
+    const originalCreateQueryRunner = DataSource.prototype.createQueryRunner;
     
-    // Future enhancement: track transaction metrics
-    // const transactionStartTimes = new WeakMap<any, number>();
-    // const transactionQueries = new WeakMap<any, string[]>();
+    DataSource.prototype.createQueryRunner = function(mode?: 'master' | 'slave'): QueryRunner {
+      const queryRunner = originalCreateQueryRunner.call(this, mode);
+      
+      // Patch this QueryRunner instance's query() method
+      patchQueryRunnerInstance(queryRunner);
+      
+      verboseLog('QueryRunner created and patched for raw query hooks');
+      return queryRunner;
+    };
     
-    // We can't directly patch QueryRunner as it's an interface
-    // Instead, we'll try to patch common implementations
-    // This is a best-effort approach
-    
-    verboseLog('Transaction hooks patching attempted (best-effort)');
+    verboseLog('QueryRunner patching successful - raw SQL queries will be captured');
   } catch (err) {
-    verboseLog('Transaction hooks not available:', err);
+    verboseLog('QueryRunner patching failed:', err);
+    console.warn('[typeorm-query-hooks] Failed to patch QueryRunner - raw SQL queries will not be captured:', err);
   }
+}
+
+/**
+ * Patch a specific QueryRunner instance to capture raw SQL
+ */
+function patchQueryRunnerInstance(queryRunner: QueryRunner): void {
+  // Safety check: don't patch if already patched
+  if ((queryRunner as any).__queryHooksPatched) {
+    return;
+  }
+  
+  // Safety check: ensure query method exists
+  if (typeof queryRunner.query !== 'function') {
+    verboseLog('QueryRunner.query is not a function, skipping patch');
+    return;
+  }
+  
+  const originalQuery = queryRunner.query.bind(queryRunner);
+  
+  queryRunner.query = async function(query: string, parameters?: any[]): Promise<any> {
+    // CRITICAL: Wrap everything in try-catch to never break user code
+    try {
+      const startTime = Date.now();
+      
+      const context: RawQueryContext = {
+        sql: query,
+        parameters,
+        timestamp: new Date(startTime),
+        queryRunner
+      };
+      
+      // Call onRawQuery hooks
+      plugins.forEach(plugin => {
+        if (plugin.onRawQuery) {
+          try {
+            verboseLog(`Calling plugin ${plugin.name}.onRawQuery`);
+            plugin.onRawQuery(context);
+          } catch (err) {
+            console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onRawQuery failed:`, err);
+          }
+        }
+      });
+      
+      try {
+        // Execute the original query
+        const result = await originalQuery(query, parameters);
+        const executionTime = Date.now() - startTime;
+        
+        // Call onRawQueryComplete hooks
+        plugins.forEach(plugin => {
+          if (plugin.onRawQueryComplete) {
+            try {
+              plugin.onRawQueryComplete({
+                ...context,
+                executionTime,
+                result
+              });
+            } catch (err) {
+              console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onRawQueryComplete failed:`, err);
+            }
+          }
+        });
+        
+        return result;
+      } catch (error) {
+        // Call onRawQueryError hooks
+        plugins.forEach(plugin => {
+          if (plugin.onRawQueryError) {
+            try {
+              plugin.onRawQueryError({
+                ...context,
+                error: error as Error
+              });
+            } catch (err) {
+              console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onRawQueryError failed:`, err);
+            }
+          }
+        });
+        
+        throw error;
+      }
+    } catch (hookError) {
+      // CRITICAL: If hook system fails, fall back to original
+      console.error('[typeorm-query-hooks] QueryRunner hook system error:', hookError);
+      return originalQuery(query, parameters);
+    }
+  };
+  
+  // Mark as patched
+  (queryRunner as any).__queryHooksPatched = true;
 }
 
 /**

@@ -8,6 +8,55 @@ import {
 import { QueryHookPlugin, QueryHookContext } from '../index';
 
 /**
+ * Extract table names from raw SQL string
+ * Handles SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, TRUNCATE
+ * @param sql - Raw SQL string
+ * @returns Array of table names found in the SQL
+ */
+export function extractTablesFromSQL(sql: string): string[] {
+  const tables = new Set<string>();
+  const upperSQL = sql.toUpperCase();
+  
+  // Regular expressions for different SQL operations
+  const patterns = [
+    // SELECT ... FROM table_name
+    /FROM\s+([`"]?)(\w+)\1/gi,
+    // JOIN table_name
+    /JOIN\s+([`"]?)(\w+)\1/gi,
+    // INSERT INTO table_name
+    /INSERT\s+INTO\s+([`"]?)(\w+)\1/gi,
+    // UPDATE table_name
+    /UPDATE\s+([`"]?)(\w+)\1/gi,
+    // DELETE FROM table_name
+    /DELETE\s+FROM\s+([`"]?)(\w+)\1/gi,
+    // CREATE TABLE table_name
+    /CREATE\s+(?:TABLE|INDEX)\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:UNIQUE\s+)?(?:[`"]?)(\w+)(?:[`"]?)\s+ON\s+([`"]?)(\w+)\2/gi,
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`"]?)(\w+)\1/gi,
+    // ALTER TABLE table_name
+    /ALTER\s+TABLE\s+([`"]?)(\w+)\1/gi,
+    // DROP TABLE table_name
+    /DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([`"]?)(\w+)\1/gi,
+    // TRUNCATE table_name
+    /TRUNCATE\s+(?:TABLE\s+)?([`"]?)(\w+)\1/gi,
+    // CREATE INDEX ... ON table_name
+    /\s+ON\s+([`"]?)(\w+)\1\s*\(/gi
+  ];
+  
+  patterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(sql)) !== null) {
+      // Get the last captured group (table name)
+      const tableName = match[match.length - 1];
+      if (tableName && tableName !== 'TABLE' && tableName !== 'EXISTS') {
+        tables.add(tableName);
+      }
+    }
+  });
+  
+  return Array.from(tables);
+}
+
+/**
  * Recursively extract table names from a QueryBuilder's internal expressionMap
  * @param builder - The QueryBuilder instance
  * @returns Array of table names involved in the query
@@ -329,6 +378,120 @@ export function createTableExtractorPlugin(options: TableExtractorOptions = {}):
           };
         }
       });
+      
+      if (enableLogging) {
+        console.log('[TableExtractor] Enabled - will capture both QueryBuilder and raw SQL queries');
+      }
+    },
+
+    // Handle raw SQL queries (DDL, migrations, etc.)
+    onRawQuery: (context) => {
+      try {
+        // Extract tables from raw SQL
+        const tables = extractTablesFromSQL(context.sql);
+        
+        // Call onTablesExtracted callback if provided
+        // Create a pseudo-context compatible with the existing callback
+        if (onTablesExtracted) {
+          try {
+            const pseudoContext = {
+              builder: null as any, // No builder for raw queries
+              sql: context.sql,
+              timestamp: context.timestamp,
+              parameters: context.parameters,
+              queryType: undefined
+            };
+            onTablesExtracted(tables, pseudoContext);
+          } catch (err) {
+            if (onError) {
+              onError(err as Error, {
+                builder: null as any,
+                sql: context.sql,
+                timestamp: context.timestamp,
+                parameters: context.parameters
+              });
+            } else if (enableLogging) {
+              console.error('[TableExtractor] onTablesExtracted callback failed:', err);
+            }
+          }
+        }
+        
+        // Handle empty tables
+        if (tables.length === 0) {
+          const message = `No tables extracted from raw SQL query. SQL: ${context.sql.substring(0, 100)}`;
+          
+          // Call onEmptyTables callback if provided
+          if (onEmptyTables) {
+            try {
+              onEmptyTables({
+                builder: null as any,
+                sql: context.sql,
+                timestamp: context.timestamp,
+                parameters: context.parameters
+              });
+            } catch (err) {
+              if (onError) {
+                onError(err as Error, {
+                  builder: null as any,
+                  sql: context.sql,
+                  timestamp: context.timestamp,
+                  parameters: context.parameters
+                });
+              } else if (enableLogging) {
+                console.error('[TableExtractor] onEmptyTables callback failed:', err);
+              }
+            }
+          }
+          
+          // Call onWarning callback if provided
+          if (onWarning) {
+            try {
+              onWarning(message, {
+                builder: null as any,
+                sql: context.sql,
+                timestamp: context.timestamp,
+                parameters: context.parameters
+              });
+            } catch (err) {
+              if (onError) {
+                onError(err as Error, {
+                  builder: null as any,
+                  sql: context.sql,
+                  timestamp: context.timestamp,
+                  parameters: context.parameters
+                });
+              } else if (enableLogging) {
+                console.error('[TableExtractor] onWarning callback failed:', err);
+              }
+            }
+          }
+          
+          // Deprecated: warnOnEmptyTables
+          if (warnOnEmptyTables && !onEmptyTables && !onWarning) {
+            console.warn(`[TableExtractor] ⚠️  ${message}`);
+          }
+        }
+
+        if (enableLogging) {
+          if (tables.length > 0) {
+            console.log(`[TableExtractor] Raw SQL - Extracted ${tables.length} table(s):`, tables);
+          } else {
+            console.log(`[TableExtractor] Raw SQL - No tables extracted from:`, context.sql.substring(0, 100));
+          }
+        }
+      } catch (err) {
+        // Handle extraction errors
+        if (onError) {
+          onError(err as Error, {
+            builder: null as any,
+            sql: context.sql,
+            timestamp: context.timestamp,
+            parameters: context.parameters
+          });
+        } else if (enableLogging) {
+          console.error('[TableExtractor] Raw SQL table extraction failed:', err);
+        }
+      }
     },
 
     onQueryBuild: (context) => {
