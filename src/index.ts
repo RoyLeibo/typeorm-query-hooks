@@ -437,6 +437,10 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
         (BuilderClass.prototype as any)[methodName] = async function (...args: any[]) {
           // CRITICAL: This library should NEVER throw errors to user code
           // All hook failures should be logged but not propagate
+          
+          // Declare at outer scope so it's accessible in catch block
+          let queryExecutionError: Error | undefined;
+          
           try {
             const startTime = Date.now();
             let sql: string;
@@ -453,7 +457,14 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           verboseLog(`${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
           
           // Store builder in AsyncLocalStorage for logger access
-          const tables = extractTablesFromBuilder(this);
+          let tables: string[] = [];
+          try {
+            tables = extractTablesFromBuilder(this);
+          } catch (err) {
+            console.warn(`[typeorm-query-hooks] ${methodName}() - extractTablesFromBuilder failed:`, err);
+            tables = []; // Continue with empty array
+          }
+          
           const queryType = (this as any).expressionMap?.queryType;
           const context = {
             builder: this,
@@ -487,14 +498,13 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
 
           // Execute the original method within AsyncLocalStorage context
           let result: any;
-          let error: Error | undefined;
           
           try {
             result = await queryContextStore.run(context, async () => {
               return await original.apply(this, args);
             });
           } catch (err) {
-            error = err as Error;
+            queryExecutionError = err as Error;
           }
 
           const endTime = Date.now();
@@ -502,101 +512,136 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           executionContext.executionTime = executionTime;
 
           // Fire onQueryComplete or onQueryError
-          if (error) {
+          if (queryExecutionError) {
             plugins.forEach(plugin => {
               if (plugin.onQueryError) {
                 try {
-                  plugin.onQueryError({ ...executionContext, error });
+                  plugin.onQueryError({ ...executionContext, error: queryExecutionError! }); // Non-null assertion since we checked above
                 } catch (err) {
                   console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryError failed:`, err);
                 }
               }
             });
-            throw error;
-          } else {
+            // Re-throw the query error (not a hook error, this is the actual query failing)
+            throw queryExecutionError;
+          }
+          
+          // Query succeeded, fire onQueryComplete
+          plugins.forEach(plugin => {
+            if (plugin.onQueryComplete) {
+              try {
+                plugin.onQueryComplete(executionContext);
+              } catch (err) {
+                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryComplete failed:`, err);
+              }
+            }
+          });
+
+          // Analyze result and fire result hooks - WRAP IN TRY-CATCH FOR SAFETY
+          try {
+            const isEmpty = result === null || result === undefined || 
+                           (Array.isArray(result) && result.length === 0) ||
+                           (result && typeof result === 'object' && Object.keys(result).length === 0);
+            
+            let rowCount: number | undefined;
+            try {
+              if (Array.isArray(result)) {
+                rowCount = result.length;
+              } else if (result && typeof result === 'object') {
+                if ('raw' in result && result.raw && Array.isArray(result.raw)) {
+                  rowCount = result.raw.length;
+                } else if ('affected' in result) {
+                  rowCount = result.affected;
+                } else if ('entities' in result && Array.isArray(result.entities)) {
+                  rowCount = result.entities.length;
+                }
+              }
+            } catch (err) {
+              console.warn(`[typeorm-query-hooks] ${methodName}() - Failed to determine rowCount:`, err);
+              rowCount = undefined;
+            }
+
+            const resultContext: QueryResultContext = {
+              ...executionContext,
+              result,
+              rowCount,
+              isEmpty
+            };
+
+            // Fire onQueryResult (plugins decide what to do with the result)
             plugins.forEach(plugin => {
-              if (plugin.onQueryComplete) {
+              if (plugin.onQueryResult) {
                 try {
-                  plugin.onQueryComplete(executionContext);
+                  plugin.onQueryResult(resultContext);
                 } catch (err) {
-                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryComplete failed:`, err);
+                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryResult failed:`, err);
                 }
               }
             });
+
+            // Fire onEmptyResult (plugins decide if they care about empty results)
+            if (isEmpty) {
+              plugins.forEach(plugin => {
+                if (plugin.onEmptyResult) {
+                  try {
+                    plugin.onEmptyResult(resultContext);
+                  } catch (err) {
+                    console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onEmptyResult failed:`, err);
+                  }
+                }
+              });
+            }
+
+            // Fire onLargeResult (plugins decide what is "large")
+            plugins.forEach(plugin => {
+              if (plugin.onLargeResult) {
+                try {
+                  plugin.onLargeResult(resultContext);
+                } catch (err) {
+                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onLargeResult failed:`, err);
+                }
+              }
+            });
+
+            // Fire onSlowQuery (plugins decide what is "slow")
+            plugins.forEach(plugin => {
+              if (plugin.onSlowQuery) {
+                try {
+                  plugin.onSlowQuery(executionContext);
+                } catch (err) {
+                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onSlowQuery failed:`, err);
+                }
+              }
+            });
+          } catch (resultProcessingError) {
+            // If result processing fails, log but continue
+            console.warn(`[typeorm-query-hooks] ${methodName}() - Result processing failed:`, resultProcessingError);
           }
-
-          // Analyze result and fire result hooks
-          const isEmpty = result === null || result === undefined || 
-                         (Array.isArray(result) && result.length === 0) ||
-                         (result && typeof result === 'object' && Object.keys(result).length === 0);
-          
-          let rowCount: number | undefined;
-          if (Array.isArray(result)) {
-            rowCount = result.length;
-          } else if (result && typeof result === 'object' && 'raw' in result && Array.isArray(result.raw)) {
-            rowCount = result.raw.length;
-          } else if (result && typeof result === 'object' && 'affected' in result) {
-            rowCount = result.affected;
-          }
-
-          const resultContext: QueryResultContext = {
-            ...executionContext,
-            result,
-            rowCount,
-            isEmpty
-          };
-
-          // Fire onQueryResult (plugins decide what to do with the result)
-          plugins.forEach(plugin => {
-            if (plugin.onQueryResult) {
-              try {
-                plugin.onQueryResult(resultContext);
-              } catch (err) {
-                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryResult failed:`, err);
-              }
-            }
-          });
-
-          // Fire onEmptyResult (plugins decide if they care about empty results)
-          plugins.forEach(plugin => {
-            if (plugin.onEmptyResult) {
-              try {
-                plugin.onEmptyResult(resultContext);
-              } catch (err) {
-                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onEmptyResult failed:`, err);
-              }
-            }
-          });
-
-          // Fire onLargeResult (plugins decide what is "large")
-          plugins.forEach(plugin => {
-            if (plugin.onLargeResult) {
-              try {
-                plugin.onLargeResult(resultContext);
-              } catch (err) {
-                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onLargeResult failed:`, err);
-              }
-            }
-          });
-
-          // Fire onSlowQuery (plugins decide what is "slow")
-          plugins.forEach(plugin => {
-            if (plugin.onSlowQuery) {
-              try {
-                plugin.onSlowQuery(executionContext);
-              } catch (err) {
-                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onSlowQuery failed:`, err);
-              }
-            }
-          });
 
           return result;
           } catch (hookError) {
-            // CRITICAL: If ANY error occurs in the hook system, log it but don't break user code
+            // Check if this is a query error that we already processed (thrown at line ~515)
+            // or if this is an actual hook system error
+            const isQueryError = queryExecutionError !== undefined;
+            
+            if (isQueryError) {
+              // This is the query itself failing, not the hook system
+              // We already fired onQueryError hooks, just re-throw the original error
+              throw hookError;
+            }
+            
+            // This is a hook system error (before, during, or after query execution)
             console.error(`[typeorm-query-hooks] CRITICAL: Hook system error in ${methodName}():`, hookError);
-            console.error('[typeorm-query-hooks] Falling back to original method execution');
-            // Execute the original method without hooks
-            return original.apply(this, args);
+            console.error('[typeorm-query-hooks] Attempting to execute query without hooks...');
+            
+            // Try to execute the original method without hooks
+            try {
+              return await original.apply(this, args);
+            } catch (fallbackError) {
+              // Fallback also failed - this is a real query error
+              console.error(`[typeorm-query-hooks] Query execution failed:`, fallbackError);
+              throw fallbackError;
+            }
           }
         };
       }

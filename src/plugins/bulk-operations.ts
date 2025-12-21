@@ -1,5 +1,5 @@
-import { QueryHookPlugin, QueryResultContext } from '../index';
-import { extractTablesFromBuilder } from './table-extractor';
+import { QueryHookPlugin, QueryResultContext, RawQueryContext } from '../index';
+import { extractTablesFromBuilder, extractTablesFromSQL } from './table-extractor';
 
 /**
  * Options for BulkOperationsPlugin
@@ -131,61 +131,176 @@ export function BulkOperationsPlugin(options: BulkOperationsOptions = {}): Query
     name: 'BulkOperations',
 
     onQueryResult: async (context: QueryResultContext) => {
-      const queryType = context.queryType ? String(context.queryType).toUpperCase() : undefined;
-      
-      // Only monitor specified query types
-      if (!queryType || !monitorTypes.some(type => type.toUpperCase() === queryType)) {
-        return;
-      }
-
-      // Get affected row count
-      const affectedRows = context.rowCount;
-      
-      if (affectedRows === undefined || affectedRows === null) {
-        return;
-      }
-
-      // Extract tables from the query
-      const tables = extractTablesFromBuilder(context.builder);
-      
-      // Filter to monitored tables if specified
-      const tablesToCheck = monitorTables.length > 0
-        ? tables.filter((table: string) => monitorTables.includes(table))
-        : tables;
-
-      if (tablesToCheck.length === 0) {
-        return;
-      }
-
-      if (enableLogging) {
-        console.log(`[BulkOperations] ${queryType} affected ${affectedRows} rows on tables:`, tablesToCheck);
-      }
-
-      // Check if this is a bulk operation
-      if (affectedRows > bulkThreshold) {
-        // Call onBulkOperation callback if provided
-        if (onBulkOperation) {
-          try {
-            await onBulkOperation(context, affectedRows);
-          } catch (error) {
-            console.error(`[BulkOperations] ❌ onBulkOperation callback failed:`, error);
-            throw error; // Re-throw to allow blocking bulk operations
-          }
+      try {
+        const queryType = context.queryType ? String(context.queryType).toUpperCase() : undefined;
+        
+        // Only monitor specified query types
+        if (!queryType || !monitorTypes.some(type => type.toUpperCase() === queryType)) {
+          return;
         }
 
-        // Deprecated: warnOnBulk (only if no callback provided, for backward compatibility)
-        if (warnOnBulk && !onBulkOperation) {
-          console.warn(
-            `[BulkOperations] ⚠️  BULK OPERATION DETECTED:`,
-            {
-              queryType,
-              affectedRows,
-              threshold: bulkThreshold,
-              tables: tablesToCheck,
-              method: context.methodName,
-              sqlPreview: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : '')
+        // Get affected row count
+        const affectedRows = context.rowCount;
+        
+        if (affectedRows === undefined || affectedRows === null) {
+          return;
+        }
+
+        // Extract tables from the query
+        const tables = extractTablesFromBuilder(context.builder);
+        
+        // Filter to monitored tables if specified
+        const tablesToCheck = monitorTables.length > 0
+          ? tables.filter((table: string) => monitorTables.includes(table))
+          : tables;
+
+        if (tablesToCheck.length === 0) {
+          return;
+        }
+
+        if (enableLogging) {
+          console.log(`[BulkOperations] ${queryType} affected ${affectedRows} rows on tables:`, tablesToCheck);
+        }
+
+        // Check if this is a bulk operation
+        if (affectedRows > bulkThreshold) {
+          // Call onBulkOperation callback if provided
+          if (onBulkOperation) {
+            try {
+              await onBulkOperation(context, affectedRows);
+            } catch (error) {
+              console.error(`[BulkOperations] ❌ onBulkOperation callback failed:`, error);
+              throw error; // Re-throw to allow blocking bulk operations
             }
-          );
+          }
+
+          // Deprecated: warnOnBulk (only if no callback provided, for backward compatibility)
+          if (warnOnBulk && !onBulkOperation) {
+            console.warn(
+              `[BulkOperations] ⚠️  BULK OPERATION DETECTED:`,
+              {
+                queryType,
+                affectedRows,
+                threshold: bulkThreshold,
+                tables: tablesToCheck,
+                method: context.methodName,
+                sqlPreview: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : '')
+              }
+            );
+          }
+        }
+      } catch (error) {
+        // Silently handle errors unless it's from the callback
+        if (enableLogging && error instanceof Error && !error.message.includes('callback failed')) {
+          console.error('[BulkOperations] Error in onQueryResult:', error);
+        }
+        // Re-throw callback errors to allow blocking
+        if (error instanceof Error && error.message.includes('callback failed')) {
+          throw error;
+        }
+      }
+    },
+
+    // Monitor bulk operations in raw SQL
+    onRawQueryComplete: async (context: RawQueryContext & { executionTime: number; result?: any }) => {
+      try {
+        // Determine query type from SQL
+        const sql = context.sql.toUpperCase().trim();
+        let queryType: string | undefined;
+        
+        if (sql.startsWith('INSERT')) {
+          queryType = 'INSERT';
+        } else if (sql.startsWith('UPDATE')) {
+          queryType = 'UPDATE';
+        } else if (sql.startsWith('DELETE')) {
+          queryType = 'DELETE';
+        }
+        
+        // Only monitor specified query types
+        if (!queryType || !monitorTypes.some(type => type.toUpperCase() === queryType)) {
+          return;
+        }
+
+        // Try to extract affected rows from result
+        let affectedRows: number | undefined;
+        if (context.result) {
+          if (typeof context.result === 'number') {
+            affectedRows = context.result;
+          } else if (Array.isArray(context.result) && context.result[0]) {
+            affectedRows = context.result[0].affectedRows || context.result[0].count || context.result.length;
+          } else if (typeof context.result === 'object') {
+            affectedRows = context.result.affectedRows || context.result.rowCount || context.result.changes;
+          }
+        }
+        
+        if (affectedRows === undefined || affectedRows === null) {
+          return;
+        }
+
+        // Extract tables from raw SQL
+        const tables = extractTablesFromSQL(context.sql);
+        
+        // Filter to monitored tables if specified
+        const tablesToCheck = monitorTables.length > 0
+          ? tables.filter((table: string) => monitorTables.includes(table))
+          : tables;
+
+        if (tablesToCheck.length === 0) {
+          return;
+        }
+
+        if (enableLogging) {
+          console.log(`[BulkOperations] Raw SQL ${queryType} affected ${affectedRows} rows on tables:`, tablesToCheck);
+        }
+
+        // Check if this is a bulk operation
+        if (affectedRows > bulkThreshold) {
+          // Create pseudo-context for callback
+          const pseudoContext: QueryResultContext = {
+            builder: null as any,
+            sql: context.sql,
+            timestamp: context.timestamp,
+            parameters: context.parameters,
+            executionTime: context.executionTime,
+            methodName: 'query',
+            result: context.result,
+            rowCount: affectedRows,
+            isEmpty: false,
+            queryType: queryType as any // Type assertion for raw SQL query types
+          };
+
+          // Call onBulkOperation callback if provided
+          if (onBulkOperation) {
+            try {
+              await onBulkOperation(pseudoContext, affectedRows);
+            } catch (error) {
+              console.error(`[BulkOperations] ❌ onBulkOperation callback failed:`, error);
+              throw error; // Re-throw to allow blocking bulk operations
+            }
+          }
+
+          // Deprecated: warnOnBulk (only if no callback provided, for backward compatibility)
+          if (warnOnBulk && !onBulkOperation) {
+            console.warn(
+              `[BulkOperations] ⚠️  BULK OPERATION DETECTED (raw SQL):`,
+              {
+                queryType,
+                affectedRows,
+                threshold: bulkThreshold,
+                tables: tablesToCheck,
+                sqlPreview: context.sql.substring(0, 150) + (context.sql.length > 150 ? '...' : '')
+              }
+            );
+          }
+        }
+      } catch (error) {
+        // Silently handle errors unless it's from the callback
+        if (enableLogging && error instanceof Error && !error.message.includes('callback failed')) {
+          console.error('[BulkOperations] Error in onRawQueryComplete:', error);
+        }
+        // Re-throw callback errors to allow blocking
+        if (error instanceof Error && error.message.includes('callback failed')) {
+          throw error;
         }
       }
     }

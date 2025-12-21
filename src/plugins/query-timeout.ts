@@ -1,5 +1,5 @@
-import { QueryHookPlugin, QueryExecutionContext } from '../index';
-import { extractTablesFromBuilder } from './table-extractor';
+import { QueryHookPlugin, QueryExecutionContext, RawQueryContext } from '../index';
+import { extractTablesFromBuilder, extractTablesFromSQL } from './table-extractor';
 
 /**
  * Options for QueryTimeoutPlugin
@@ -140,6 +140,7 @@ export function QueryTimeoutPlugin(options: QueryTimeoutOptions = {}): QueryHook
   } = options;
 
   const activeTimeouts = new WeakMap<any, { timeout: NodeJS.Timeout; warning?: NodeJS.Timeout }>();
+  const rawQueryTimeouts = new WeakMap<any, { timeout: NodeJS.Timeout; warning?: NodeJS.Timeout }>();
 
   return {
     name: 'QueryTimeout',
@@ -248,6 +249,151 @@ export function QueryTimeoutPlugin(options: QueryTimeoutOptions = {}): QueryHook
           clearTimeout(handles.warning);
         }
         activeTimeouts.delete(context.builder);
+      }
+    },
+
+    // Monitor raw SQL queries
+    onRawQuery: (context: RawQueryContext) => {
+      try {
+        // Determine timeout for this query
+        let timeout = defaultTimeout;
+
+        // Try to determine query type from SQL
+        const sql = context.sql.toUpperCase().trim();
+        let queryType: string | undefined;
+        
+        if (sql.startsWith('SELECT')) queryType = 'SELECT';
+        else if (sql.startsWith('INSERT')) queryType = 'INSERT';
+        else if (sql.startsWith('UPDATE')) queryType = 'UPDATE';
+        else if (sql.startsWith('DELETE')) queryType = 'DELETE';
+        else if (sql.startsWith('CREATE')) queryType = 'CREATE';
+        else if (sql.startsWith('ALTER')) queryType = 'ALTER';
+        else if (sql.startsWith('DROP')) queryType = 'DROP';
+
+        // Check type-specific timeout
+        if (queryType && timeoutByType[queryType]) {
+          timeout = timeoutByType[queryType];
+        }
+
+        // Check table pattern timeout
+        const tables = extractTablesFromSQL(context.sql);
+        
+        for (const [pattern, patternTimeout] of Object.entries(timeoutByTablePattern)) {
+          const regex = new RegExp(pattern);
+          if (tables.some((table: string) => regex.test(table))) {
+            timeout = patternTimeout;
+            break;
+          }
+        }
+
+        // Create pseudo-context for callbacks
+        const pseudoContext: QueryExecutionContext = {
+          builder: null as any,
+          sql: context.sql,
+          timestamp: context.timestamp,
+          parameters: context.parameters,
+          methodName: 'query',
+          queryType: queryType as any // Type assertion for raw SQL query types
+        };
+
+        // Set warning timeout (if callback provided)
+        let warningHandle: NodeJS.Timeout | undefined;
+        if (onTimeoutWarning) {
+          const warningTime = timeout * warningThreshold;
+          warningHandle = setTimeout(() => {
+            try {
+              onTimeoutWarning(pseudoContext, warningTime, timeout);
+            } catch (error) {
+              if (onError) {
+                onError(pseudoContext, error as Error);
+              } else if (enableLogging) {
+                console.error('[QueryTimeout] onTimeoutWarning callback failed:', error);
+              }
+            }
+            
+            if (enableLogging) {
+              console.warn(
+                `[QueryTimeout] ⚠️  Raw SQL approaching timeout: ${warningTime}ms / ${timeout}ms:\n` +
+                `  SQL: ${context.sql.substring(0, 200)}...\n` +
+                `  Type: ${queryType || 'UNKNOWN'}\n` +
+                `  Tables: ${tables.join(', ')}`
+              );
+            }
+          }, warningTime);
+        }
+
+        // Set timeout
+        const timeoutHandle = setTimeout(() => {
+          if (enableLogging) {
+            console.error(
+              `[QueryTimeout] ⏱️  Raw SQL timeout after ${timeout}ms:\n` +
+              `  SQL: ${context.sql.substring(0, 200)}...\n` +
+              `  Type: ${queryType || 'UNKNOWN'}\n` +
+              `  Tables: ${tables.join(', ')}`
+            );
+          }
+
+          if (onTimeout) {
+            try {
+              onTimeout(pseudoContext, timeout);
+            } catch (error) {
+              if (onError) {
+                onError(pseudoContext, error as Error);
+              } else if (enableLogging) {
+                console.error('[QueryTimeout] onTimeout callback failed:', error);
+              }
+            }
+          }
+
+          // Note: We can't actually throw here as it won't cancel the raw query
+          // The query will complete and onRawQueryError will handle it
+          if (throwOnTimeout && enableLogging) {
+            console.warn('[QueryTimeout] Raw SQL exceeded timeout but cannot be cancelled');
+          }
+        }, timeout);
+
+        rawQueryTimeouts.set(context.queryRunner, { timeout: timeoutHandle, warning: warningHandle });
+      } catch (error) {
+        // Silently handle errors in raw query timeout setup
+        if (enableLogging) {
+          console.error('[QueryTimeout] Error in onRawQuery:', error);
+        }
+      }
+    },
+
+    onRawQueryComplete: (context: RawQueryContext & { executionTime: number }) => {
+      try {
+        const handles = rawQueryTimeouts.get(context.queryRunner);
+        if (handles) {
+          clearTimeout(handles.timeout);
+          if (handles.warning) {
+            clearTimeout(handles.warning);
+          }
+          rawQueryTimeouts.delete(context.queryRunner);
+        }
+      } catch (error) {
+        // Silently handle cleanup errors
+        if (enableLogging) {
+          console.error('[QueryTimeout] Error in onRawQueryComplete:', error);
+        }
+      }
+    },
+
+    onRawQueryError: (context: RawQueryContext & { error: Error }) => {
+      try {
+        const handles = rawQueryTimeouts.get(context.queryRunner);
+        if (handles) {
+          clearTimeout(handles.timeout);
+          if (handles.warning) {
+            clearTimeout(handles.warning);
+          }
+          rawQueryTimeouts.delete(context.queryRunner);
+        }
+      } catch (error) {
+        // Silently handle cleanup errors
+        if (enableLogging) {
+          console.error('[QueryTimeout] Error in onRawQueryError:', error);
+        }
       }
     }
   };

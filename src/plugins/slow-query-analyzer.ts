@@ -1,4 +1,4 @@
-import { QueryHookPlugin, QueryExecutionContext } from '../index';
+import { QueryHookPlugin, QueryExecutionContext, RawQueryContext } from '../index';
 
 /**
  * Query execution plan from EXPLAIN
@@ -225,40 +225,148 @@ export function SlowQueryAnalyzerPlugin(options: SlowQueryAnalyzerOptions = {}):
     name: 'SlowQueryAnalyzer',
 
     onQueryComplete: async (context: QueryExecutionContext) => {
-      // Only analyze slow queries
-      if (!context.executionTime || context.executionTime < threshold) {
-        return;
-      }
+      try {
+        // Only analyze slow queries
+        if (!context.executionTime || context.executionTime < threshold) {
+          return;
+        }
 
-      if (enableLogging) {
-        console.log(
-          `[SlowQueryAnalyzer] 🔬 Analyzing slow query (${context.executionTime}ms)...`
-        );
-      }
+        if (enableLogging) {
+          console.log(
+            `[SlowQueryAnalyzer] 🔬 Analyzing slow query (${context.executionTime}ms)...`
+          );
+        }
 
-      const plan = await runExplain(context);
-      
-      if (!plan) {
-        return;
-      }
+        const plan = await runExplain(context);
+        
+        if (!plan) {
+          return;
+        }
 
-      if (enableLogging) {
-        console.log(
-          `[SlowQueryAnalyzer] 📊 Execution Plan:\n` +
-          `  Execution Time: ${context.executionTime}ms\n` +
-          `  Estimated Cost: ${plan.estimatedCost || 'N/A'}\n` +
-          `  Estimated Rows: ${plan.estimatedRows || 'N/A'}\n` +
-          `  Has Sequential Scan: ${plan.hasSeqScan ? 'YES ⚠️' : 'NO'}\n` +
-          `  SQL: ${context.sql.substring(0, 100)}...\n` +
-          `\nFull Plan:\n${plan.raw}\n`
-        );
-      }
+        if (enableLogging) {
+          console.log(
+            `[SlowQueryAnalyzer] 📊 Execution Plan:\n` +
+            `  Execution Time: ${context.executionTime}ms\n` +
+            `  Estimated Cost: ${plan.estimatedCost || 'N/A'}\n` +
+            `  Estimated Rows: ${plan.estimatedRows || 'N/A'}\n` +
+            `  Has Sequential Scan: ${plan.hasSeqScan ? 'YES ⚠️' : 'NO'}\n` +
+            `  SQL: ${context.sql.substring(0, 100)}...\n` +
+            `\nFull Plan:\n${plan.raw}\n`
+          );
+        }
 
-      if (onAnalysis) {
-        try {
-          await onAnalysis(context, plan);
-        } catch (error) {
-          console.error('[SlowQueryAnalyzer] onAnalysis callback failed:', error);
+        if (onAnalysis) {
+          try {
+            await onAnalysis(context, plan);
+          } catch (error) {
+            console.error('[SlowQueryAnalyzer] onAnalysis callback failed:', error);
+          }
+        }
+      } catch (error) {
+        // Silently handle errors - analysis is optional
+        if (enableLogging) {
+          console.error('[SlowQueryAnalyzer] Error in onQueryComplete:', error);
+        }
+      }
+    },
+
+    // Analyze slow raw SQL queries
+    onRawQueryComplete: async (context: RawQueryContext & { executionTime: number }) => {
+      try {
+        // Only analyze slow queries
+        if (context.executionTime < threshold) {
+          return;
+        }
+
+        if (enableLogging) {
+          console.log(
+            `[SlowQueryAnalyzer] 🔬 Analyzing slow raw SQL (${context.executionTime}ms)...`
+          );
+        }
+
+        // For raw SQL, we can try to run EXPLAIN if we have a queryRunner
+        if (context.queryRunner) {
+          try {
+            let explainSql = '';
+            
+            // Build EXPLAIN query based on database type
+            switch (databaseType) {
+              case 'postgres':
+                explainSql = runAnalyze 
+                  ? `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${context.sql}`
+                  : `EXPLAIN (FORMAT JSON) ${context.sql}`;
+                break;
+              case 'mysql':
+              case 'mariadb':
+                explainSql = `EXPLAIN ${context.sql}`;
+                break;
+              case 'sqlite':
+                explainSql = `EXPLAIN QUERY PLAN ${context.sql}`;
+                break;
+              case 'mssql':
+                explainSql = `SET SHOWPLAN_TEXT ON; ${context.sql}; SET SHOWPLAN_TEXT OFF;`;
+                break;
+              default:
+                explainSql = `EXPLAIN ${context.sql}`;
+            }
+
+            const result = await context.queryRunner.query(explainSql);
+            const plan: QueryExecutionPlan = {
+              raw: JSON.stringify(result, null, 2),
+              parsed: result
+            };
+
+            // Try to parse useful info from plan
+            if (databaseType === 'postgres' && Array.isArray(result) && result[0]) {
+              const planData = result[0]['QUERY PLAN'] || result[0];
+              if (planData && typeof planData === 'object') {
+                plan.hasSeqScan = JSON.stringify(planData).includes('Seq Scan');
+                plan.estimatedCost = planData['Total Cost'] || planData['Plan']?.['Total Cost'];
+                plan.estimatedRows = planData['Plan Rows'] || planData['Plan']?.['Plan Rows'];
+              }
+            }
+
+            if (enableLogging) {
+              console.log(
+                `[SlowQueryAnalyzer] 📊 Raw SQL Execution Plan:\n` +
+                `  Execution Time: ${context.executionTime}ms\n` +
+                `  Estimated Cost: ${plan.estimatedCost || 'N/A'}\n` +
+                `  Estimated Rows: ${plan.estimatedRows || 'N/A'}\n` +
+                `  Has Sequential Scan: ${plan.hasSeqScan ? 'YES ⚠️' : 'NO'}\n` +
+                `  SQL: ${context.sql.substring(0, 100)}...\n` +
+                `\nFull Plan:\n${plan.raw}\n`
+              );
+            }
+
+            if (onAnalysis) {
+              try {
+                // Create pseudo-context for callback
+                const pseudoContext: QueryExecutionContext = {
+                  builder: null as any,
+                  sql: context.sql,
+                  timestamp: context.timestamp,
+                  parameters: context.parameters,
+                  executionTime: context.executionTime,
+                  methodName: 'query'
+                };
+                await onAnalysis(pseudoContext, plan);
+              } catch (error) {
+                console.error('[SlowQueryAnalyzer] onAnalysis callback failed:', error);
+              }
+            }
+          } catch (explainError) {
+            // EXPLAIN might fail for various reasons (permissions, syntax, etc.)
+            if (enableLogging) {
+              console.warn('[SlowQueryAnalyzer] Could not run EXPLAIN on raw SQL:', explainError);
+            }
+          }
+        } else if (enableLogging) {
+          console.log('[SlowQueryAnalyzer] No queryRunner available for EXPLAIN on raw SQL');
+        }
+      } catch (error) {
+        // Silently handle errors - analysis is optional
+        if (enableLogging) {
+          console.error('[SlowQueryAnalyzer] Error in onRawQueryComplete:', error);
         }
       }
     },
