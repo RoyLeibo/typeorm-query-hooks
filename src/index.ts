@@ -4,8 +4,7 @@ import {
   UpdateQueryBuilder,
   DeleteQueryBuilder,
   QueryBuilder,
-  QueryRunner,
-  DataSource
+  QueryRunner
 } from 'typeorm';
 import { queryContextStore } from './context-store';
 import { extractTablesFromBuilder } from './plugins/table-extractor';
