@@ -1,4 +1,5 @@
 import { QueryHookPlugin, QueryHookContext, QueryExecutionContext } from '../index';
+import { queryMetadataRegistry } from './query-metadata-registry';
 
 /**
  * SQL Query Types
@@ -316,9 +317,48 @@ export function QueryTypeDetectorPlugin(options: QueryTypeDetectorOptions = {}):
   return {
     name: 'QueryTypeDetector',
 
+    // Store query type in registry during query build (early capture)
+    onQueryBuild: (context: QueryHookContext) => {
+      const queryType = getQueryType(context);
+      
+      // Store in registry so getExtendedQueryTypeFromSQL() can retrieve it
+      const existing = queryMetadataRegistry.get(context.sql);
+      if (existing) {
+        // Update existing metadata with query type
+        queryMetadataRegistry.register(context.sql, {
+          ...existing,
+          queryTypeExtended: queryType
+        });
+      } else {
+        // Create new metadata entry
+        queryMetadataRegistry.register(context.sql, {
+          tables: [],
+          timestamp: context.timestamp,
+          queryTypeExtended: queryType,
+          builder: context.builder
+        });
+      }
+    },
+
     onQueryComplete: (context: QueryExecutionContext) => {
       // Extract query type using expressionMap (preferred) or SQL parsing (fallback)
       const queryType = getQueryType(context);
+
+      // Update registry with final query type
+      const existing = queryMetadataRegistry.get(context.sql);
+      if (existing) {
+        queryMetadataRegistry.register(context.sql, {
+          ...existing,
+          queryTypeExtended: queryType
+        });
+      } else {
+        queryMetadataRegistry.register(context.sql, {
+          tables: [],
+          timestamp: context.timestamp,
+          queryTypeExtended: queryType,
+          builder: context.builder
+        });
+      }
 
       // Check if this query type should be monitored
       const shouldMonitor = monitorTypes.length === 0 || monitorTypes.includes(queryType);

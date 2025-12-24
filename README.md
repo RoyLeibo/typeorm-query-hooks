@@ -1046,6 +1046,43 @@ setInterval(() => {
 
 This ensures maximum reliability while supporting all query types!
 
+**Using in Your Logger:**
+
+Just like `getTablesFromSQL()`, you can use `getExtendedQueryTypeFromSQL()` to retrieve the query type in your custom logger:
+
+```typescript
+import { getExtendedQueryTypeFromSQL, getTablesFromSQL } from 'typeorm-query-hooks';
+
+class MyCustomLogger implements Logger {
+  logQuery(query: string, parameters?: any[]): void {
+    // Get query type extracted from expressionMap (if available)
+    const queryType = getExtendedQueryTypeFromSQL(query);
+    
+    // Get tables extracted from expressionMap (if available)
+    const tables = getTablesFromSQL(query);
+    
+    this.logger.info('Query executed', {
+      query,
+      queryType,  // "SELECT", "INSERT", "CREATE", "BEGIN", etc.
+      tables: tables.join(', '),  // "users, posts"
+      parameters
+    });
+  }
+}
+```
+
+**How it works:**
+1. `QueryTypeDetector` plugin extracts query type from `expressionMap` during query execution
+2. Stores it in the metadata registry with AsyncLocalStorage for concurrent safety
+3. Your logger calls `getExtendedQueryTypeFromSQL(sql)` to retrieve it
+4. Returns the stored value instantly (no parsing needed!)
+
+**Benefits:**
+- ✅ **Accurate**: Uses TypeORM's internal state, not regex
+- ✅ **Fast**: No string parsing, just registry lookup
+- ✅ **Complete**: Includes DDL, transactions, CTEs that SQL parsing might miss
+- ✅ **Safe**: Concurrent queries won't interfere with each other
+
 
 
 <div id="resultvalidator"></div>

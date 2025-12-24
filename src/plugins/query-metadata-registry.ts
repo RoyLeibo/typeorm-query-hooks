@@ -4,12 +4,23 @@ import { extractTablesFromBuilder } from './table-extractor';
 import { queryContextStore } from '../context-store';
 
 /**
+ * Extended query type (includes DDL, transactions, etc.)
+ * This is separate from TypeORM's limited queryType
+ */
+export type ExtendedQueryType = 
+  | 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE'
+  | 'CREATE' | 'ALTER' | 'DROP' | 'TRUNCATE'
+  | 'BEGIN' | 'COMMIT' | 'ROLLBACK'
+  | 'WITH' | 'OTHER';
+
+/**
  * Metadata associated with a query
  */
 export interface QueryMetadata {
   tables: string[];
   timestamp: Date;
-  queryType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE';
+  queryType?: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE'; // TypeORM's limited type
+  queryTypeExtended?: ExtendedQueryType; // Extended type from QueryTypeDetector
   builder?: QueryBuilder<any>;
 }
 
@@ -231,9 +242,46 @@ export function formatTableNames(tables: string[]): string {
 
 /**
  * Utility function to get query type from SQL (for use in Logger)
+ * This returns TypeORM's basic query type (SELECT/INSERT/UPDATE/DELETE)
  */
 export function getQueryTypeFromSQL(sql: string): string | undefined {
   return queryMetadataRegistry.getQueryType(sql);
+}
+
+/**
+ * Utility function to get extended query type from SQL (for use in Logger)
+ * This includes DDL, transactions, and other types beyond basic CRUD
+ * 
+ * @example
+ * ```typescript
+ * import { getExtendedQueryTypeFromSQL } from 'typeorm-query-hooks';
+ * 
+ * // In your logger
+ * const queryType = getExtendedQueryTypeFromSQL(sql);
+ * console.log(queryType); // "SELECT", "CREATE", "BEGIN", etc.
+ * ```
+ */
+export function getExtendedQueryTypeFromSQL(sql: string): ExtendedQueryType | undefined {
+  // PRIORITY 1: Get from AsyncLocalStorage context (QueryBuilder queries)
+  // This is set BEFORE execution, so it's available when logger is called
+  try {
+    const context = queryContextStore.getStore();
+    if (context && context.queryType) {
+      // Convert TypeORM's queryType to ExtendedQueryType
+      return context.queryType.toUpperCase() as ExtendedQueryType;
+    }
+  } catch (err) {
+    // Fallback to next method
+  }
+  
+  // PRIORITY 2: Try registry lookup (for post-execution lookups)
+  const metadata = queryMetadataRegistry.get(sql);
+  if (metadata?.queryTypeExtended) {
+    return metadata.queryTypeExtended;
+  }
+  
+  // PRIORITY 3: Return undefined for queries not tracked
+  return undefined;
 }
 
 /**
