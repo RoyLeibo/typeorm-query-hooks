@@ -444,173 +444,60 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           
           try {
             const startTime = Date.now();
-            let sql: string;
-            let parameters: any[];
             
-            try {
-              sql = this.getQuery();
-              parameters = (this as any).expressionMap?.parameters || [];
-            } catch (err) {
-              console.warn(`[typeorm-query-hooks] ${methodName}() - getQuery() failed:`, err);
-              return original.apply(this, args);
-            }
+            // DON'T call getQuery() before execution - it might corrupt TypeORM state
+            // Just execute directly
+            verboseLog(`${methodName}() - Executing without pre-query SQL capture`);
+
+          // Execute the original method directly
+          try {
+            result = await original.apply(this, args);
+            verboseLog(`${methodName}() - Completed successfully`);
+          } catch (err) {
+            verboseLog(`${methodName}() - Failed:`, (err as Error).message);
+            queryExecutionError = err as Error;
+          }
           
-          verboseLog(`${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
+          const executionTime = Date.now() - startTime;
           
-          // Extract query type for hooks
-          const queryType = (this as any).expressionMap?.queryType;
+          // Get SQL AFTER execution for logging (if needed)
+          let sql = '';
+          let parameters: any[] = [];
+          let queryType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'select' | 'insert' | 'update' | 'delete' | undefined;
           
-          // Create execution context
+          try {
+            sql = this.getQuery();
+            parameters = (this as any).expressionMap?.parameters || [];
+            queryType = (this as any).expressionMap?.queryType as typeof queryType;
+          } catch (err) {
+            // If we can't get SQL, that's okay - just log without it
+            verboseLog(`Could not get SQL after execution:`, err);
+          }
+          
+          // Create execution context (for error logging)
           const executionContext: QueryExecutionContext = {
             builder: this,
             sql,
             timestamp: new Date(startTime),
             parameters,
             queryType,
-            methodName
+            methodName,
+            executionTime
           };
 
-          // Fire onQueryStart hooks
-          plugins.forEach(plugin => {
-            if (plugin.onQueryStart) {
-              try {
-                plugin.onQueryStart(executionContext);
-              } catch (err) {
-                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryStart failed:`, err);
-              }
-            }
-          });
-
-          // AsyncLocalStorage has been removed due to interference with TypeORM execution
-          // The logger now relies on SQL parsing and registry lookup for table names
-          // This eliminates a major source of instability
-
-          // Execute the original method directly (no wrapper!)
-          // Add extra logging to help debug TypeORM internal errors
-          try {
-            verboseLog(`${methodName}() - About to execute original TypeORM method`);
-            result = await original.apply(this, args);
-            verboseLog(`${methodName}() - Original method completed successfully`);
-          } catch (err) {
-            console.error(`[typeorm-query-hooks] Query execution failed in ${methodName}():`, {
-              error: (err as Error).message,
-              stack: (err as Error).stack,
-              sql: sql.substring(0, 200),
-              methodName
-            });
-            queryExecutionError = err as Error;
-          }
-
-          const endTime = Date.now();
-          const executionTime = endTime - startTime;
-          executionContext.executionTime = executionTime;
-
-          // Fire onQueryComplete or onQueryError
+          // If query failed, log error details and re-throw
           if (queryExecutionError) {
-            plugins.forEach(plugin => {
-              if (plugin.onQueryError) {
-                try {
-                  plugin.onQueryError({ ...executionContext, error: queryExecutionError! }); // Non-null assertion since we checked above
-                } catch (err) {
-                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryError failed:`, err);
-                }
-              }
+            console.error(`[typeorm-query-hooks] Query ${methodName}() failed:`, {
+              error: queryExecutionError.message,
+              sql: sql.substring(0, 200),
+              methodName,
+              executionTime
             });
-            // Re-throw the query error (not a hook error, this is the actual query failing)
             throw queryExecutionError;
           }
           
-          // Query succeeded, fire onQueryComplete
-          plugins.forEach(plugin => {
-            if (plugin.onQueryComplete) {
-              try {
-                plugin.onQueryComplete(executionContext);
-              } catch (err) {
-                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryComplete failed:`, err);
-              }
-            }
-          });
-
-          // Analyze result and fire result hooks - WRAP IN TRY-CATCH FOR SAFETY
-          try {
-            const isEmpty = result === null || result === undefined || 
-                           (Array.isArray(result) && result.length === 0) ||
-                           (result && typeof result === 'object' && Object.keys(result).length === 0);
-            
-            let rowCount: number | undefined;
-            try {
-              if (Array.isArray(result)) {
-                rowCount = result.length;
-              } else if (result && typeof result === 'object') {
-                if ('raw' in result && result.raw && Array.isArray(result.raw)) {
-                  rowCount = result.raw.length;
-                } else if ('affected' in result) {
-                  rowCount = result.affected;
-                } else if ('entities' in result && Array.isArray(result.entities)) {
-                  rowCount = result.entities.length;
-                }
-              }
-            } catch (err) {
-              console.warn(`[typeorm-query-hooks] ${methodName}() - Failed to determine rowCount:`, err);
-              rowCount = undefined;
-            }
-
-            const resultContext: QueryResultContext = {
-              ...executionContext,
-              result,
-              rowCount,
-              isEmpty
-            };
-
-            // Fire onQueryResult (plugins decide what to do with the result)
-            plugins.forEach(plugin => {
-              if (plugin.onQueryResult) {
-                try {
-                  plugin.onQueryResult(resultContext);
-                } catch (err) {
-                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryResult failed:`, err);
-                }
-              }
-            });
-
-            // Fire onEmptyResult (plugins decide if they care about empty results)
-            if (isEmpty) {
-              plugins.forEach(plugin => {
-                if (plugin.onEmptyResult) {
-                  try {
-                    plugin.onEmptyResult(resultContext);
-                  } catch (err) {
-                    console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onEmptyResult failed:`, err);
-                  }
-                }
-              });
-            }
-
-            // Fire onLargeResult (plugins decide what is "large")
-            plugins.forEach(plugin => {
-              if (plugin.onLargeResult) {
-                try {
-                  plugin.onLargeResult(resultContext);
-                } catch (err) {
-                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onLargeResult failed:`, err);
-                }
-              }
-            });
-
-            // Fire onSlowQuery (plugins decide what is "slow")
-            plugins.forEach(plugin => {
-              if (plugin.onSlowQuery) {
-                try {
-                  plugin.onSlowQuery(executionContext);
-                } catch (err) {
-                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onSlowQuery failed:`, err);
-                }
-              }
-            });
-          } catch (resultProcessingError) {
-            // If result processing fails, log but continue
-            console.warn(`[typeorm-query-hooks] ${methodName}() - Result processing failed:`, resultProcessingError);
-          }
+          // Query succeeded - just log success if verbose
+          verboseLog(`${methodName}() succeeded in ${executionTime}ms`);
 
           return result;
           } catch (hookError) {
