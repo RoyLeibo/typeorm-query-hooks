@@ -33,7 +33,7 @@ export interface AuditLoggingOptions {
    *   await auditLogRepository.save({
    *     userId: entry.userId,
    *     action: entry.action,
-   *     tables: entry.tables.join(','),
+   *     tables: entry.tables.join(', '),
    *     timestamp: entry.timestamp
    *   });
    * }

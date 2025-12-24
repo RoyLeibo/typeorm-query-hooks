@@ -215,6 +215,21 @@ export function getTablesFromSQL(sql: string): string[] {
 }
 
 /**
+ * Format table names as a comma-separated string with spaces
+ * @param tables - Array of table names
+ * @returns Formatted string like "users, posts, comments" or empty string if no tables
+ * 
+ * @example
+ * ```typescript
+ * const tables = getTablesFromSQL(sql);
+ * const formatted = formatTableNames(tables); // "users, posts"
+ * ```
+ */
+export function formatTableNames(tables: string[]): string {
+  return tables.join(', ');
+}
+
+/**
  * Utility function to get query type from SQL (for use in Logger)
  */
 export function getQueryTypeFromSQL(sql: string): string | undefined {

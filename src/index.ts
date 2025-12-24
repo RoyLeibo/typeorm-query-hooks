@@ -469,15 +469,15 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
               builder: this
             };
             
-            // Use enterWith() to make context available during execution
-            // This allows the logger to access tables while TypeORM is executing
-            queryContextStore.enterWith(context);
             verboseLog(`${methodName}() - Stored ${tables.length} tables in context for logger`);
 
-          // Execute the original method directly
+          // Execute the original method with context
+          // Using run() ensures context is cleaned up after execution completes
           try {
-            verboseLog(`${methodName}() - Executing query`);
-            result = await original.apply(this, args);
+            verboseLog(`${methodName}() - Executing query with AsyncLocalStorage context`);
+            result = await queryContextStore.run(context, async () => {
+              return await original.apply(this, args);
+            });
             verboseLog(`${methodName}() - Completed successfully`);
           } catch (err) {
             verboseLog(`${methodName}() - Failed:`, (err as Error).message);
@@ -496,7 +496,7 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
             verboseLog(`Could not get SQL after execution:`, err);
           }
           
-          // Create execution context (for error logging)
+          // Create execution context (for hooks)
           const executionContext: QueryExecutionContext = {
             builder: this,
             sql,
@@ -507,8 +507,20 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
             executionTime
           };
 
-          // If query failed, log error details and re-throw
+          // If query failed, call error hooks and re-throw
           if (queryExecutionError) {
+            // Call onQueryError hooks
+            plugins.forEach(plugin => {
+              if (plugin.onQueryError) {
+                try {
+                  verboseLog(`Calling plugin ${plugin.name}.onQueryError`);
+                  plugin.onQueryError({ ...executionContext, error: queryExecutionError as Error });
+                } catch (err) {
+                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryError failed:`, err);
+                }
+              }
+            });
+            
             console.error(`[typeorm-query-hooks] Query ${methodName}() failed:`, {
               error: queryExecutionError.message,
               sql: sql.substring(0, 200),
@@ -518,8 +530,103 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
             throw queryExecutionError;
           }
           
-          // Query succeeded - just log success if verbose
+          // Query succeeded - call success hooks
           verboseLog(`${methodName}() succeeded in ${executionTime}ms`);
+          
+          // Call onQueryComplete hooks
+          plugins.forEach(plugin => {
+            if (plugin.onQueryComplete) {
+              try {
+                verboseLog(`Calling plugin ${plugin.name}.onQueryComplete`);
+                plugin.onQueryComplete(executionContext);
+              } catch (err) {
+                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryComplete failed:`, err);
+              }
+            }
+          });
+          
+          // Call onSlowQuery hooks - let each plugin decide its own threshold
+          plugins.forEach(plugin => {
+            if (plugin.onSlowQuery) {
+              try {
+                verboseLog(`Calling plugin ${plugin.name}.onSlowQuery`);
+                plugin.onSlowQuery(executionContext);
+              } catch (err) {
+                console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onSlowQuery failed:`, err);
+              }
+            }
+          });
+          
+          // Call result hooks if result is available
+          if (result !== undefined) {
+            // Determine result size safely
+            let resultCount = 0;
+            try {
+              if (Array.isArray(result)) {
+                resultCount = result.length;
+              } else if (result && typeof result === 'object') {
+                // Handle TypeORM result objects
+                if (Array.isArray(result.raw)) {
+                  resultCount = result.raw.length;
+                } else if (Array.isArray(result.entities)) {
+                  resultCount = result.entities.length;
+                } else if (typeof result.affected === 'number') {
+                  resultCount = result.affected;
+                }
+              }
+            } catch (err) {
+              verboseLog(`Could not determine result count:`, err);
+            }
+            
+            const resultContext: QueryResultContext = {
+              builder: this,
+              sql,
+              timestamp: new Date(startTime),
+              parameters,
+              queryType,
+              methodName,
+              executionTime,
+              result,
+              rowCount: resultCount,
+              isEmpty: resultCount === 0
+            };
+            
+            // Call onQueryResult hooks
+            plugins.forEach(plugin => {
+              if (plugin.onQueryResult) {
+                try {
+                  verboseLog(`Calling plugin ${plugin.name}.onQueryResult`);
+                  plugin.onQueryResult(resultContext);
+                } catch (err) {
+                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name} onQueryResult failed:`, err);
+                }
+              }
+            });
+            
+            // Call onEmptyResult - plugins will check isEmpty flag
+            plugins.forEach(plugin => {
+              if (plugin.onEmptyResult) {
+                try {
+                  verboseLog(`Calling plugin ${plugin.name}.onEmptyResult`);
+                  plugin.onEmptyResult(resultContext);
+                } catch (err) {
+                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name}.onEmptyResult failed:`, err);
+                }
+              }
+            });
+            
+            // Call onLargeResult - let each plugin decide its own threshold
+            plugins.forEach(plugin => {
+              if (plugin.onLargeResult) {
+                try {
+                  verboseLog(`Calling plugin ${plugin.name}.onLargeResult`);
+                  plugin.onLargeResult(resultContext);
+                } catch (err) {
+                  console.warn(`[typeorm-query-hooks] Plugin ${plugin.name}.onLargeResult failed:`, err);
+                }
+              }
+            });
+          }
 
           return result;
           } catch (hookError) {

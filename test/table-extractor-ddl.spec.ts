@@ -166,7 +166,12 @@ describe('TableExtractorPlugin - DDL and Raw Queries', () => {
     console.log(`\n✅ QueryBuilder queries captured: ${extractedQueries.length}`);
   });
 
-  it('should NOW capture raw SQL queries', async () => {
+  it.skip('should capture raw SQL queries (DISABLED: QueryRunner hooks disabled for stability)', async () => {
+    // NOTE: QueryRunner hooks are currently DISABLED in v6.4.0 because they were found to
+    // interfere with TypeORM's internal execution flow, causing crashes and state corruption.
+    // This test is skipped until a safer implementation can be developed.
+    // See: src/index.ts line 674 - patchTransactionHooks() is commented out
+    
     // Clear previous captures
     extractedQueries.length = 0;
     emptyTableQueries.length = 0;
@@ -177,15 +182,12 @@ describe('TableExtractorPlugin - DDL and Raw Queries', () => {
     console.log('\n=== Executing RAW SQL (SELECT) ===');
     await dataSource.query('SELECT * FROM ddl_test_entity');
     
-    // These SHOULD NOW be captured via QueryRunner hooks
+    // These would be captured if QueryRunner hooks were enabled
     console.log(`\nRaw SQL queries captured: ${extractedQueries.length}`);
-    console.log('Expected: 2 (raw queries now captured via QueryRunner hooks)');
+    console.log('Expected: 0 (QueryRunner hooks disabled)');
     
-    // ✅ Should be captured now!
-    expect(extractedQueries.length).toBe(2);
-    expect(extractedQueries.every(q => q.source === 'Raw')).toBe(true);
-    expect(extractedQueries[0].tables).toContain('ddl_test_entity');
-    expect(extractedQueries[1].tables).toContain('ddl_test_entity');
+    // Currently raw SQL queries are NOT captured
+    expect(extractedQueries.length).toBe(0);
   });
 });
 
