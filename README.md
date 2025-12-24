@@ -1,6 +1,6 @@
 # 🚀 TypeORM Query Hooks
 
-> **The ultimate TypeORM companion** - 20 powerful plugins to prevent N+1 queries, detect connection leaks, block dangerous operations, auto-run EXPLAIN, trace query sources & more. Works seamlessly with **JavaScript**, **TypeScript**, and **NestJS**.
+> **The ultimate TypeORM companion** - 21 powerful plugins to prevent N+1 queries, detect connection leaks, block dangerous operations, auto-run EXPLAIN, trace query sources & more. Works seamlessly with **JavaScript**, **TypeScript**, and **NestJS**.
 
 [![npm version](https://badge.fury.io/js/typeorm-query-hooks.svg)](https://www.npmjs.com/package/typeorm-query-hooks)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -28,12 +28,12 @@
 
 ### **Extensible:**
 - 🎨 **Create Custom Plugins** - Build your own hooks for specific needs
-- 🔌 **20+ Built-in Plugins** - Ready-to-use solutions for common problems
+- 🔌 **21 Built-in Plugins** - Ready-to-use solutions for common problems
 - 🎯 **Full TypeScript Support** - Type-safe plugin development with exported types
 
 ---
 
-## 🏗️ **20 Powerful Plugins Included**
+## 🏗️ **21 Powerful Plugins Included**
 
 > 📚 **Event Callbacks**: All plugins support event callbacks for custom handling. See [PLUGIN_CALLBACKS_REFERENCE.md](./PLUGIN_CALLBACKS_REFERENCE.md) for complete callback documentation.
 > 
@@ -75,6 +75,7 @@
 | Plugin | Purpose | Use Case |
 |--------|---------|----------|
 | [🏷️ **TableExtractor**](#tableextractor) | Extract table names from queries | Logging, caching, access control |
+| [🔤 **QueryTypeDetector**](#querytypedetector) | Detect SQL query types (SELECT, INSERT, etc.) | Analytics, monitoring, security |
 | [✅ **ResultValidator**](#resultvalidator) | Validate query results | Alert on empty results, pagination issues |
 | [✏️ **QueryModifier**](#querymodifier) | Modify queries before execution | Multi-tenancy, query hints, safety |
 | [🔍 **QueryComplexity**](#querycomplexity) | Warn on complex queries | Identify queries needing optimization |
@@ -858,6 +859,192 @@ const tables = extractTablesFromBuilder(query);
 // Or:
 const tables2 = query.getInvolvedTables();
 ```
+
+<div id="querytypedetector"></div>
+
+### **🔤 QueryTypeDetector** - Detect SQL query types
+
+**What it does:**
+Detects the type of SQL query being executed (SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, etc.) using TypeORM's internal `expressionMap` (preferred) or SQL string parsing (fallback).
+
+**Why use expressionMap instead of SQL parsing?**
+- ✅ **More reliable** - Uses TypeORM's internal state, not fragile regex
+- ✅ **Faster** - Direct property access vs string parsing
+- ✅ **Type-safe** - TypeORM guarantees the type values
+
+**Configuration Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `monitorTypes` | `QueryType[]` | `[]` (all) | Only monitor specific query types. Example: `['INSERT', 'UPDATE', 'DELETE']` for write operations only. Empty = monitor all types. |
+| `enableLogging` | `boolean` | `false` | Log all detected query types. Useful for debugging and analytics. |
+
+**Event Callbacks:**
+
+| Callback | Parameters | Description |
+|----------|------------|-------------|
+| `onQueryType` | `(context: QueryTypeContext)` | Called for every query (filtered by `monitorTypes`) |
+| `onSelect` | `(context: QueryTypeContext)` | Called specifically for SELECT queries |
+| `onInsert` | `(context: QueryTypeContext)` | Called specifically for INSERT queries |
+| `onUpdate` | `(context: QueryTypeContext)` | Called specifically for UPDATE queries |
+| `onDelete` | `(context: QueryTypeContext)` | Called specifically for DELETE queries |
+| `onDDL` | `(context: QueryTypeContext)` | Called for DDL operations (CREATE, ALTER, DROP, TRUNCATE) |
+| `onTransaction` | `(context: QueryTypeContext)` | Called for transaction control (BEGIN, COMMIT, ROLLBACK) |
+
+**Supported Query Types:**
+- **DML**: `SELECT`, `INSERT`, `UPDATE`, `DELETE`
+- **DDL**: `CREATE`, `ALTER`, `DROP`, `TRUNCATE`
+- **Transaction**: `BEGIN`, `COMMIT`, `ROLLBACK`
+- **Other**: `WITH` (CTEs), `OTHER` (unknown/unsupported)
+
+**Usage Examples:**
+
+```typescript
+import { 
+  registerPlugin, 
+  QueryTypeDetectorPlugin,
+  extractQueryTypeFromBuilder,
+  extractQueryTypeFromSQL
+} from 'typeorm-query-hooks';
+
+// Example 1: Monitor all write operations
+registerPlugin(QueryTypeDetectorPlugin({
+  monitorTypes: ['INSERT', 'UPDATE', 'DELETE'],
+  onQueryType: (context) => {
+    console.log(`Write operation: ${context.queryType} on ${context.sql.substring(0, 100)}`);
+    // Track in analytics, metrics, etc.
+  }
+}));
+
+// Example 2: Specific callbacks for each operation type
+registerPlugin(QueryTypeDetectorPlugin({
+  onSelect: (context) => {
+    console.log(`Read query executed: ${context.executionTime}ms`);
+  },
+  onInsert: (context) => {
+    console.log(`New data inserted`);
+    // Invalidate cache, send notifications, etc.
+  },
+  onUpdate: (context) => {
+    console.log(`Data updated`);
+  },
+  onDelete: (context) => {
+    console.warn(`Data deleted - audit this!`);
+  }
+}));
+
+// Example 3: Monitor DDL operations in production (security)
+registerPlugin(QueryTypeDetectorPlugin({
+  onDDL: (context) => {
+    console.error(`⚠️ DDL operation in production: ${context.queryType}`);
+    // Alert DevOps, log to security system
+  }
+}));
+
+// Example 4: Use directly in code (like TableExtractor)
+const repo = dataSource.getRepository(User);
+
+// Detect from QueryBuilder (uses expressionMap - preferred!)
+const selectQuery = repo.createQueryBuilder('user').where('user.id = :id', { id: 1 });
+const type1 = extractQueryTypeFromBuilder(selectQuery); // "SELECT"
+
+const insertQuery = repo.createQueryBuilder().insert().into(User).values({ name: 'John' });
+const type2 = extractQueryTypeFromBuilder(insertQuery); // "INSERT"
+
+// Detect from SQL string (fallback method)
+const type3 = extractQueryTypeFromSQL('SELECT * FROM users'); // "SELECT"
+const type4 = extractQueryTypeFromSQL('CREATE INDEX idx_name ON users(name)'); // "CREATE"
+
+// Helper functions
+import { isDML, isDDL, isTransaction } from 'typeorm-query-hooks';
+
+console.log(isDML('SELECT'));      // true
+console.log(isDML('INSERT'));      // true
+console.log(isDML('CREATE'));      // false
+
+console.log(isDDL('CREATE'));      // true
+console.log(isDDL('ALTER'));       // true
+console.log(isDDL('SELECT'));      // false
+
+console.log(isTransaction('BEGIN'));   // true
+console.log(isTransaction('COMMIT'));  // true
+console.log(isTransaction('SELECT'));  // false
+```
+
+**Real-World Use Cases:**
+
+```typescript
+// 1. Analytics: Track read vs write ratio
+let readCount = 0, writeCount = 0;
+registerPlugin(QueryTypeDetectorPlugin({
+  onSelect: () => readCount++,
+  onQueryType: (ctx) => {
+    if (['INSERT', 'UPDATE', 'DELETE'].includes(ctx.queryType)) {
+      writeCount++;
+    }
+  }
+}));
+
+// 2. Security: Alert on DDL in production
+if (process.env.NODE_ENV === 'production') {
+  registerPlugin(QueryTypeDetectorPlugin({
+    onDDL: (context) => {
+      alert.critical(`DDL operation detected: ${context.queryType}`, {
+        sql: context.sql,
+        timestamp: context.timestamp
+      });
+    }
+  }));
+}
+
+// 3. Cache invalidation based on operation type
+registerPlugin(QueryTypeDetectorPlugin({
+  monitorTypes: ['INSERT', 'UPDATE', 'DELETE'],
+  onQueryType: (context) => {
+    // Extract tables and invalidate cache
+    const tables = extractTablesFromBuilder(context.builder);
+    tables.forEach(table => cache.invalidate(table));
+  }
+}));
+
+// 4. Performance monitoring by query type
+const metrics = {
+  SELECT: { count: 0, totalTime: 0 },
+  INSERT: { count: 0, totalTime: 0 },
+  UPDATE: { count: 0, totalTime: 0 },
+  DELETE: { count: 0, totalTime: 0 }
+};
+
+registerPlugin(QueryTypeDetectorPlugin({
+  onQueryType: (context) => {
+    const type = context.queryType;
+    if (metrics[type]) {
+      metrics[type].count++;
+      metrics[type].totalTime += context.executionTime || 0;
+    }
+  }
+}));
+
+// Log metrics every 5 minutes
+setInterval(() => {
+  Object.entries(metrics).forEach(([type, data]) => {
+    console.log(`${type}: ${data.count} queries, avg ${data.totalTime / data.count}ms`);
+  });
+}, 5 * 60 * 1000);
+```
+
+**Comparison: expressionMap vs SQL Parsing**
+
+| Method | Speed | Accuracy | TypeORM Only | Raw SQL |
+|--------|-------|----------|--------------|---------|
+| `extractQueryTypeFromBuilder` (expressionMap) | ⚡ Fast | ✅ 100% | ✅ Yes | ❌ No |
+| `extractQueryTypeFromSQL` (string parsing) | 🐌 Slower | ⚠️ ~95% | ✅ Yes | ✅ Yes |
+
+**The plugin automatically uses the best method available:**
+1. **Priority 1**: expressionMap from QueryBuilder (if available)
+2. **Priority 2**: SQL string parsing (fallback)
+
+This ensures maximum reliability while supporting all query types!
 
 
 

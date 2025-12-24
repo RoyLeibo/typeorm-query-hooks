@@ -822,6 +822,7 @@ export function isHooksEnabled(): boolean {
 export * from './plugins/table-extractor';
 export * from './plugins/query-logger';
 export * from './plugins/query-metadata-registry';
+export * from './plugins/query-type-detector';
 export * from './plugins/performance-monitor';
 export * from './plugins/result-validator';
 export * from './plugins/query-modifier';
