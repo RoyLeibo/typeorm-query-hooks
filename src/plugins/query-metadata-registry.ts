@@ -1,6 +1,6 @@
 import { QueryBuilder } from 'typeorm';
 import { QueryHookPlugin } from '../index';
-import { extractTablesFromBuilder, extractTablesFromSQL } from './table-extractor';
+import { extractTablesFromBuilder } from './table-extractor';
 import { queryContextStore } from '../context-store';
 
 /**
