@@ -655,7 +655,8 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
   });
 
   // Patch QueryRunner for transaction hooks
-  patchTransactionHooks();
+  // DISABLED: Raw query hooks may interfere with TypeORM execution
+  // patchTransactionHooks();
 
   isPatched = true;
 
