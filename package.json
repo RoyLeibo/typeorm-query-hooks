@@ -1,6 +1,6 @@
 {
   "name": "typeorm-query-hooks",
-  "version": "6.2.4",
+  "version": "6.2.5",
   "description": "🚀 Powerful plugin-based hooks for TypeORM: Performance monitoring, result validation, query modification, transaction tracking & more. Works with JS, TS & NestJS!",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

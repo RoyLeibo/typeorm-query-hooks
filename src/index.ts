@@ -256,6 +256,11 @@ let isPatched = false;
 let verboseMode = false;
 
 /**
+ * Disable AsyncLocalStorage (for troubleshooting)
+ */
+let disableAsyncContext = false;
+
+/**
  * Internal logging helper - only logs when verbose mode is enabled
  */
 function verboseLog(message: string, ...args: any[]): void {
@@ -317,6 +322,13 @@ export interface QueryHooksOptions {
    * Enable detailed logging for debugging (default: false)
    */
   verbose?: boolean;
+  
+  /**
+   * Disable AsyncLocalStorage context (default: false)
+   * Set to true if experiencing issues with query execution
+   * Note: Disabling this will prevent the logger from accessing table names via context
+   */
+  disableAsyncContext?: boolean;
 }
 
 /**
@@ -329,6 +341,11 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
   if (options?.verbose) {
     verboseMode = true;
     console.log('[typeorm-query-hooks] Verbose mode enabled');
+  }
+  
+  if (options?.disableAsyncContext) {
+    disableAsyncContext = true;
+    console.log('[typeorm-query-hooks] AsyncLocalStorage disabled');
   }
   
   if (isPatched) {
@@ -498,13 +515,29 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           });
 
           // Set AsyncLocalStorage context BEFORE execution (for logger access)
-          // This is simpler and doesn't interfere with TypeORM's execution
-          queryContextStore.enterWith(context);
+          // Skip if disabled via configuration
+          if (!disableAsyncContext) {
+            try {
+              queryContextStore.enterWith(context);
+            } catch (asyncStorageError) {
+              // If AsyncLocalStorage fails, log but continue
+              verboseLog('AsyncLocalStorage.enterWith() failed:', asyncStorageError);
+            }
+          }
 
           // Execute the original method directly (no wrapper!)
+          // Add extra logging to help debug TypeORM internal errors
           try {
+            verboseLog(`${methodName}() - About to execute original TypeORM method`);
             result = await original.apply(this, args);
+            verboseLog(`${methodName}() - Original method completed successfully`);
           } catch (err) {
+            console.error(`[typeorm-query-hooks] Query execution failed in ${methodName}():`, {
+              error: (err as Error).message,
+              stack: (err as Error).stack,
+              sql: sql.substring(0, 200),
+              methodName
+            });
             queryExecutionError = err as Error;
           }
 
