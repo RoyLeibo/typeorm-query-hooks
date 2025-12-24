@@ -15,7 +15,24 @@ import { QueryHookPlugin, QueryHookContext } from '../index';
  */
 export function extractTablesFromSQL(sql: string): string[] {
   const tables = new Set<string>();
-  const upperSQL = sql.toUpperCase();
+  
+  // SQL keywords that should NEVER be considered table names
+  const SQL_KEYWORDS = new Set([
+    'SELECT', 'FROM', 'WHERE', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE',
+    'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'CROSS', 'ON', 'AS', 'AND', 'OR', 'NOT',
+    'NULL', 'IS', 'IN', 'EXISTS', 'BETWEEN', 'LIKE', 'ORDER', 'BY', 'GROUP', 'HAVING',
+    'LIMIT', 'OFFSET', 'DISTINCT', 'ALL', 'ANY', 'SOME', 'UNION', 'INTERSECT', 'EXCEPT',
+    'CREATE', 'ALTER', 'DROP', 'TABLE', 'INDEX', 'VIEW', 'DATABASE', 'SCHEMA',
+    'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'CHECK', 'DEFAULT', 'UNIQUE', 'CONSTRAINT',
+    'CASCADE', 'RESTRICT', 'NO', 'ACTION', 'TRUNCATE', 'GRANT', 'REVOKE',
+    'TRANSACTION', 'COMMIT', 'ROLLBACK', 'SAVEPOINT', 'START', 'BEGIN', 'END',
+    'IF', 'THEN', 'ELSE', 'CASE', 'WHEN', 'CAST', 'CONVERT', 'COALESCE', 'NULLIF',
+    'CONFLICT', 'DO', 'NOTHING', 'EXCLUDED', 'RETURNING', 'WITH', 'RECURSIVE', 'CTE',
+    'WINDOW', 'OVER', 'PARTITION', 'ROW', 'RANGE', 'ROWS', 'UNBOUNDED', 'PRECEDING',
+    'FOLLOWING', 'CURRENT', 'TIMESTAMP', 'DATE', 'TIME', 'INTERVAL', 'EXTRACT',
+    'TRUE', 'FALSE', 'UNKNOWN', 'ASC', 'DESC', 'NULLS', 'FIRST', 'LAST',
+    'FOR', 'SHARE', 'NOWAIT', 'SKIP', 'LOCKED'
+  ]);
   
   // Regular expressions for different SQL operations
   const patterns = [
@@ -25,12 +42,11 @@ export function extractTablesFromSQL(sql: string): string[] {
     /JOIN\s+([`"]?)(\w+)\1/gi,
     // INSERT INTO table_name
     /INSERT\s+INTO\s+([`"]?)(\w+)\1/gi,
-    // UPDATE table_name
-    /UPDATE\s+([`"]?)(\w+)\1/gi,
+    // UPDATE table_name SET (but not UPDATE SET after DO)
+    /(?<!DO\s)UPDATE\s+([`"]?)(\w+)\1\s+SET/gi,
     // DELETE FROM table_name
     /DELETE\s+FROM\s+([`"]?)(\w+)\1/gi,
     // CREATE TABLE table_name
-    /CREATE\s+(?:TABLE|INDEX)\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:UNIQUE\s+)?(?:[`"]?)(\w+)(?:[`"]?)\s+ON\s+([`"]?)(\w+)\2/gi,
     /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`"]?)(\w+)\1/gi,
     // ALTER TABLE table_name
     /ALTER\s+TABLE\s+([`"]?)(\w+)\1/gi,
@@ -39,7 +55,7 @@ export function extractTablesFromSQL(sql: string): string[] {
     // TRUNCATE table_name
     /TRUNCATE\s+(?:TABLE\s+)?([`"]?)(\w+)\1/gi,
     // CREATE INDEX ... ON table_name
-    /\s+ON\s+([`"]?)(\w+)\1\s*\(/gi
+    /CREATE\s+(?:UNIQUE\s+)?INDEX\s+\w+\s+ON\s+([`"]?)(\w+)\1/gi
   ];
   
   patterns.forEach(pattern => {
@@ -47,7 +63,7 @@ export function extractTablesFromSQL(sql: string): string[] {
     while ((match = pattern.exec(sql)) !== null) {
       // Get the last captured group (table name)
       const tableName = match[match.length - 1];
-      if (tableName && tableName !== 'TABLE' && tableName !== 'EXISTS') {
+      if (tableName && !SQL_KEYWORDS.has(tableName.toUpperCase())) {
         tables.add(tableName);
       }
     }

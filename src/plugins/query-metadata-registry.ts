@@ -181,9 +181,22 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
  * Falls back to empty array if not found in registry
  */
 export function getTablesFromSQL(sql: string): string[] {
-  // Try registry lookup with actual SQL first
-  const tables = queryMetadataRegistry.getTables(sql);
+  // PRIORITY 1: Get from AsyncLocalStorage context (QueryBuilder queries)
+  // This is set BEFORE execution, so it's available when logger is called
+  try {
+    const context = queryContextStore.getStore();
+    if (context && context.tables && context.tables.length > 0) {
+      if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
+        console.log('[typeorm-query-hooks] getTablesFromSQL - Found from AsyncLocalStorage:', context.tables);
+      }
+      return context.tables;
+    }
+  } catch (err) {
+    // Fallback to next method
+  }
   
+  // PRIORITY 2: Try registry lookup (for post-execution lookups)
+  const tables = queryMetadataRegistry.getTables(sql);
   if (tables.length > 0) {
     if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
       console.log('[typeorm-query-hooks] getTablesFromSQL - Found from registry:', tables);
@@ -191,12 +204,14 @@ export function getTablesFromSQL(sql: string): string[] {
     return tables;
   }
   
-  // If not found, try to parse from SQL as fallback
+  // PRIORITY 3: For raw SQL queries (COMMIT, START TRANSACTION, etc.)
+  // that bypass QueryBuilder entirely, return empty array
+  // DON'T use extractTablesFromSQL() because it picks up SQL keywords incorrectly
   if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
-    console.log('[typeorm-query-hooks] getTablesFromSQL - Falling back to SQL parsing');
+    console.log('[typeorm-query-hooks] getTablesFromSQL - No tables found (raw SQL or not tracked)');
   }
   
-  return extractTablesFromSQL(sql);
+  return [];
 }
 
 /**

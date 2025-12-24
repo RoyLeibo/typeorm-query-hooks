@@ -455,30 +455,24 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
               tables = extractTablesFromBuilder(this);
               queryType = (this as any).expressionMap?.queryType as typeof queryType;
               parameters = (this as any).expressionMap?.parameters || [];
-              verboseLog(`${methodName}() - Extracted ${tables.length} tables before execution`);
+              verboseLog(`${methodName}() - Extracted ${tables.length} tables before execution: ${tables.join(', ')}`);
             } catch (err) {
               verboseLog(`Failed to extract metadata:`, err);
               tables = [];
             }
             
-            // Build a SQL hint from tables for logger lookup (before we have actual SQL)
-            const sqlHint = `${methodName}_${tables.join('|')}_${queryType || 'unknown'}`;
+            // Store in AsyncLocalStorage so logger can access DURING execution
+            const context = {
+              tables,
+              queryType,
+              timestamp: new Date(startTime),
+              builder: this
+            };
             
-            // Store metadata with hint key so logger can find it DURING execution
-            if (tables.length > 0) {
-              const metadata = {
-                tables,
-                timestamp: new Date(startTime),
-                queryType,
-                builder: this
-              };
-              
-              // Store with hint key for logger lookup
-              const { queryMetadataRegistry } = require('./plugins/query-metadata-registry');
-              queryMetadataRegistry.register(sqlHint, metadata);
-              
-              verboseLog(`${methodName}() - Pre-registered tables: ${tables.join(', ')}`);
-            }
+            // Use enterWith() to make context available during execution
+            // This allows the logger to access tables while TypeORM is executing
+            queryContextStore.enterWith(context);
+            verboseLog(`${methodName}() - Stored ${tables.length} tables in context for logger`);
 
           // Execute the original method directly
           try {
@@ -492,23 +486,12 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           
           const executionTime = Date.now() - startTime;
           
-          // Get SQL AFTER execution for final registry update
+          // Get SQL AFTER execution for logging only
           let sql = '';
           
           try {
             sql = this.getQuery();
-            
-            // Now register with the ACTUAL SQL too
-            if (sql && tables.length > 0) {
-              const { queryMetadataRegistry } = require('./plugins/query-metadata-registry');
-              queryMetadataRegistry.register(sql, {
-                tables,
-                timestamp: new Date(startTime),
-                queryType,
-                builder: this
-              });
-              verboseLog(`${methodName}() - Post-registered with actual SQL`);
-            }
+            verboseLog(`${methodName}() - Retrieved SQL after execution for logging`);
           } catch (err) {
             verboseLog(`Could not get SQL after execution:`, err);
           }
