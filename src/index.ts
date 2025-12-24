@@ -689,9 +689,18 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
 }
 
 /**
- * Patch QueryRunner to capture raw SQL queries (DDL, migrations, etc.)
- * This patches DataSource.createQueryRunner() to intercept QueryRunner creation
+ * NOTE: These functions are DISABLED in v6.4.0 because QueryRunner hooks were found to
+ * interfere with TypeORM's internal execution flow, causing crashes and state corruption.
+ * They are commented out to avoid linting errors for unused functions.
+ * 
+ * See: Line 673 where patchTransactionHooks() is commented out
+ * 
+ * Future versions may implement a safer approach to capturing raw SQL queries.
  */
+
+/*
+// Patch QueryRunner to capture raw SQL queries (DDL, migrations, etc.)
+// This patches DataSource.createQueryRunner() to intercept QueryRunner creation
 function patchTransactionHooks(): void {
   try {
     // Patch DataSource.prototype.createQueryRunner to intercept QueryRunner creation
@@ -714,9 +723,7 @@ function patchTransactionHooks(): void {
   }
 }
 
-/**
- * Patch a specific QueryRunner instance to capture raw SQL
- */
+// Patch a specific QueryRunner instance to capture raw SQL
 function patchQueryRunnerInstance(queryRunner: QueryRunner): void {
   // Safety check: don't patch if already patched
   if ((queryRunner as any).__queryHooksPatched) {
@@ -803,6 +810,7 @@ function patchQueryRunnerInstance(queryRunner: QueryRunner): void {
   // Mark as patched
   (queryRunner as any).__queryHooksPatched = true;
 }
+*/
 
 /**
  * Check if hooks are currently enabled
