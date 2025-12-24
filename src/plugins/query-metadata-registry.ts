@@ -1,6 +1,6 @@
 import { QueryBuilder } from 'typeorm';
 import { QueryHookPlugin } from '../index';
-import { extractTablesFromBuilder } from './table-extractor';
+import { extractTablesFromBuilder, extractTablesFromSQL } from './table-extractor';
 import { queryContextStore } from '../context-store';
 
 /**
@@ -181,27 +181,22 @@ export const QueryMetadataRegistryPlugin: QueryHookPlugin = {
  * Falls back to empty array if not found in registry
  */
 export function getTablesFromSQL(sql: string): string[] {
-  // First, try to get tables from AsyncLocalStorage context (most reliable)
-  try {
-    const context = queryContextStore.getStore();
-    
-    if (context && context.tables) {
-      // Check if verbose mode is enabled via environment variable
-      if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
-        console.log('[typeorm-query-hooks] getTablesFromSQL - Found from AsyncLocalStorage:', context.tables);
-      }
-      return context.tables;
+  // Try registry lookup with actual SQL first
+  const tables = queryMetadataRegistry.getTables(sql);
+  
+  if (tables.length > 0) {
+    if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
+      console.log('[typeorm-query-hooks] getTablesFromSQL - Found from registry:', tables);
     }
-  } catch (err) {
-    // Fallback to registry lookup
+    return tables;
   }
   
-  // Fallback: try registry lookup with SQL matching (less reliable due to formatting differences)
+  // If not found, try to parse from SQL as fallback
   if (process.env.TYPEORM_QUERY_HOOKS_VERBOSE === 'true') {
-    console.log('[typeorm-query-hooks] getTablesFromSQL - Falling back to registry lookup');
+    console.log('[typeorm-query-hooks] getTablesFromSQL - Falling back to SQL parsing');
   }
-  const tables = queryMetadataRegistry.getTables(sql);
-  return tables;
+  
+  return extractTablesFromSQL(sql);
 }
 
 /**

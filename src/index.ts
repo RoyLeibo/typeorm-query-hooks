@@ -445,12 +445,44 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           try {
             const startTime = Date.now();
             
-            // DON'T call getQuery() before execution - it might corrupt TypeORM state
-            // Just execute directly
-            verboseLog(`${methodName}() - Executing without pre-query SQL capture`);
+            // Extract tables BEFORE execution (SAFE - doesn't call getQuery())
+            // extractTablesFromBuilder() just reads expressionMap, doesn't generate SQL
+            let tables: string[] = [];
+            let queryType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'select' | 'insert' | 'update' | 'delete' | undefined;
+            let parameters: any[] = [];
+            
+            try {
+              tables = extractTablesFromBuilder(this);
+              queryType = (this as any).expressionMap?.queryType as typeof queryType;
+              parameters = (this as any).expressionMap?.parameters || [];
+              verboseLog(`${methodName}() - Extracted ${tables.length} tables before execution`);
+            } catch (err) {
+              verboseLog(`Failed to extract metadata:`, err);
+              tables = [];
+            }
+            
+            // Build a SQL hint from tables for logger lookup (before we have actual SQL)
+            const sqlHint = `${methodName}_${tables.join('|')}_${queryType || 'unknown'}`;
+            
+            // Store metadata with hint key so logger can find it DURING execution
+            if (tables.length > 0) {
+              const metadata = {
+                tables,
+                timestamp: new Date(startTime),
+                queryType,
+                builder: this
+              };
+              
+              // Store with hint key for logger lookup
+              const { queryMetadataRegistry } = require('./plugins/query-metadata-registry');
+              queryMetadataRegistry.register(sqlHint, metadata);
+              
+              verboseLog(`${methodName}() - Pre-registered tables: ${tables.join(', ')}`);
+            }
 
           // Execute the original method directly
           try {
+            verboseLog(`${methodName}() - Executing query`);
             result = await original.apply(this, args);
             verboseLog(`${methodName}() - Completed successfully`);
           } catch (err) {
@@ -460,17 +492,24 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           
           const executionTime = Date.now() - startTime;
           
-          // Get SQL AFTER execution for logging (if needed)
+          // Get SQL AFTER execution for final registry update
           let sql = '';
-          let parameters: any[] = [];
-          let queryType: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'select' | 'insert' | 'update' | 'delete' | undefined;
           
           try {
             sql = this.getQuery();
-            parameters = (this as any).expressionMap?.parameters || [];
-            queryType = (this as any).expressionMap?.queryType as typeof queryType;
+            
+            // Now register with the ACTUAL SQL too
+            if (sql && tables.length > 0) {
+              const { queryMetadataRegistry } = require('./plugins/query-metadata-registry');
+              queryMetadataRegistry.register(sql, {
+                tables,
+                timestamp: new Date(startTime),
+                queryType,
+                builder: this
+              });
+              verboseLog(`${methodName}() - Post-registered with actual SQL`);
+            }
           } catch (err) {
-            // If we can't get SQL, that's okay - just log without it
             verboseLog(`Could not get SQL after execution:`, err);
           }
           
