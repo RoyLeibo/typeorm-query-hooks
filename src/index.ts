@@ -256,11 +256,6 @@ let isPatched = false;
 let verboseMode = false;
 
 /**
- * Disable AsyncLocalStorage (for troubleshooting)
- */
-let disableAsyncContext = false;
-
-/**
  * Internal logging helper - only logs when verbose mode is enabled
  */
 function verboseLog(message: string, ...args: any[]): void {
@@ -322,13 +317,6 @@ export interface QueryHooksOptions {
    * Enable detailed logging for debugging (default: false)
    */
   verbose?: boolean;
-  
-  /**
-   * Disable AsyncLocalStorage context (default: false)
-   * Set to true if experiencing issues with query execution
-   * Note: Disabling this will prevent the logger from accessing table names via context
-   */
-  disableAsyncContext?: boolean;
 }
 
 /**
@@ -341,11 +329,6 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
   if (options?.verbose) {
     verboseMode = true;
     console.log('[typeorm-query-hooks] Verbose mode enabled');
-  }
-  
-  if (options?.disableAsyncContext) {
-    disableAsyncContext = true;
-    console.log('[typeorm-query-hooks] AsyncLocalStorage disabled');
   }
   
   if (isPatched) {
@@ -474,24 +457,8 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           
           verboseLog(`${methodName}() called, SQL captured: ${sql.substring(0, 100)}...`);
           
-          // Store builder in AsyncLocalStorage for logger access
-          let tables: string[] = [];
-          try {
-            tables = extractTablesFromBuilder(this);
-          } catch (err) {
-            console.warn(`[typeorm-query-hooks] ${methodName}() - extractTablesFromBuilder failed:`, err);
-            tables = []; // Continue with empty array
-          }
-          
+          // Extract query type for hooks
           const queryType = (this as any).expressionMap?.queryType;
-          const context = {
-            builder: this,
-            sql,
-            tables,
-            queryType
-          };
-          
-          verboseLog(`${methodName}() - Stored ${tables.length} tables in AsyncLocalStorage`);
           
           // Create execution context
           const executionContext: QueryExecutionContext = {
@@ -514,16 +481,9 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
             }
           });
 
-          // Set AsyncLocalStorage context BEFORE execution (for logger access)
-          // Skip if disabled via configuration
-          if (!disableAsyncContext) {
-            try {
-              queryContextStore.enterWith(context);
-            } catch (asyncStorageError) {
-              // If AsyncLocalStorage fails, log but continue
-              verboseLog('AsyncLocalStorage.enterWith() failed:', asyncStorageError);
-            }
-          }
+          // AsyncLocalStorage has been removed due to interference with TypeORM execution
+          // The logger now relies on SQL parsing and registry lookup for table names
+          // This eliminates a major source of instability
 
           // Execute the original method directly (no wrapper!)
           // Add extra logging to help debug TypeORM internal errors
