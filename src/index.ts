@@ -497,11 +497,13 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
             }
           });
 
-          // Execute the original method within AsyncLocalStorage context
+          // Set AsyncLocalStorage context BEFORE execution (for logger access)
+          // This is simpler and doesn't interfere with TypeORM's execution
+          queryContextStore.enterWith(context);
+
+          // Execute the original method directly (no wrapper!)
           try {
-            result = await queryContextStore.run(context, async () => {
-              return await original.apply(this, args);
-            });
+            result = await original.apply(this, args);
           } catch (err) {
             queryExecutionError = err as Error;
           }
