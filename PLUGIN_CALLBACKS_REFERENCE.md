@@ -190,3 +190,5 @@ This document provides a quick reference for all event callbacks available in ea
 - **3 plugins** have deprecated flags (use callbacks instead): `TableExtractorPlugin` (`warnOnEmptyTables`), `LazyLoadingDetectorPlugin` (`warnOnLazyLoad`), `BulkOperationsPlugin` (`warnOnBulk`)
 
 
+
+

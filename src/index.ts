@@ -440,6 +440,7 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           
           // Declare at outer scope so it's accessible in catch block
           let queryExecutionError: Error | undefined;
+          let result: any;
           
           try {
             const startTime = Date.now();
@@ -497,8 +498,6 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
           });
 
           // Execute the original method within AsyncLocalStorage context
-          let result: any;
-          
           try {
             result = await queryContextStore.run(context, async () => {
               return await original.apply(this, args);
@@ -620,21 +619,33 @@ export function enableQueryHooks(options?: QueryHooksOptions): void {
 
           return result;
           } catch (hookError) {
-            // Check if this is a query error that we already processed (thrown at line ~515)
-            // or if this is an actual hook system error
+            // CRITICAL: Determine what type of error this is to handle it correctly
+            // There are three scenarios:
+            // 1. Query itself failed (queryExecutionError is set, and we already threw it at line 526)
+            // 2. Hook system failed BEFORE query execution (queryExecutionError is undefined, result is undefined)
+            // 3. Hook system failed AFTER query execution (queryExecutionError is undefined, result is defined)
+            
             const isQueryError = queryExecutionError !== undefined;
+            const hasResult = result !== undefined;
             
             if (isQueryError) {
-              // This is the query itself failing, not the hook system
-              // We already fired onQueryError hooks, just re-throw the original error
+              // Scenario 1: Query failed, we already handled error hooks, just re-throw
               throw hookError;
             }
             
-            // This is a hook system error (before, during, or after query execution)
-            console.error(`[typeorm-query-hooks] CRITICAL: Hook system error in ${methodName}():`, hookError);
+            if (hasResult) {
+              // Scenario 3: Query succeeded but post-processing failed
+              // Log the error but return the result (don't break user's query)
+              console.error(`[typeorm-query-hooks] CRITICAL: Hook system error AFTER query execution in ${methodName}():`, hookError);
+              console.error('[typeorm-query-hooks] Returning query result despite hook failure');
+              return result;
+            }
+            
+            // Scenario 2: Hook system failed BEFORE query execution
+            // Try to execute query without hooks
+            console.error(`[typeorm-query-hooks] CRITICAL: Hook system error BEFORE query execution in ${methodName}():`, hookError);
             console.error('[typeorm-query-hooks] Attempting to execute query without hooks...');
             
-            // Try to execute the original method without hooks
             try {
               return await original.apply(this, args);
             } catch (fallbackError) {
